@@ -1,0 +1,16 @@
+{
+  "name": "Sean's Strength Tracker V4 Stable",
+  "short_name": "Strength V4",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f6f8",
+  "theme_color": "#17365d",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
