@@ -1,14 +1,14 @@
-# Sean's Strength Tracker V4 Stable
+# Sean's Strength Tracker V5 Test
 
-Built from the attached source with all timer code and timer UI removed.
+Built from the supplied V4 Stable files.
 
-## V4 changes
-- Bodyweight field removed
-- Bodyweight removed from new workout records
-- Progression Rule card removed from the home screen
-- No timer code or timer interface
-- Keeps single-workout deletion, graph axes, workout dates, and deload date labels
-- Migrates existing data from the V2 browser storage key
+## V5 changes
+- Removed Install on your phone from Settings
+- Removed Delete all saved history and its JavaScript handler
+- Added -5 lb and +5 lb controls beside every exercise weight
+- Weight input supports negative values
+- Keeps individual workout deletion and all V4 graph/history features
+- Migrates existing browser data from V4
 
-## Run
-From this folder run `python -m http.server 7004`, then open `http://localhost:7004`. Close all older app tabs first.
+## Test locally
+Run `python -m http.server 7005` in this folder, then open `http://localhost:7005`.

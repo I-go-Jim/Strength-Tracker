@@ -1,6 +1,6 @@
 {
-  "name": "Sean's Strength Tracker V4 Stable",
-  "short_name": "Strength V4",
+  "name": "Sean's Strength Tracker V5 Test",
+  "short_name": "Strength V5",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f3f6f8",
