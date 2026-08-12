@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#17365d"/><path d="M108 216h42v80h-42zm254 0h42v40h-36zm156 0h36v40h-36zM196 248h120v16H196z" fill="white"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#17365d"/>
+
+  <g fill="white">
+    <!-- Left plates -->
+    <rect x="80" y="210" width="18" height="92" rx="4"/>
+    <rect x="110" y="190" width="28" height="132" rx="4"/>
+
+    <!-- Handle -->
+    <rect x="150" y="236" width="212" height="40" rx="12"/>
+
+    <!-- Right plates -->
+    <rect x="374" y="190" width="28" height="132" rx="4"/>
+    <rect x="414" y="210" width="18" height="92" rx="4"/>
+  </g>
+</svg>
