@@ -12,3 +12,10 @@ body.dark{--bg:#101820;--card:#18232d;--text:#edf4f8;--muted:#a8b5be;--line:#344
 
 /* V6 automatic program week */
 .automatic-week-card{grid-template-columns:1fr;text-align:center}.automatic-week-card div{align-items:center}.automatic-week-card div+div{border-left:0;padding-left:0}.automatic-week-card strong{font-size:1.55rem;margin-top:3px}.automatic-week-card small{font-size:.72rem;opacity:.78;margin-top:3px}.bottom-nav button{width:min(45%,190px)}
+
+/* Workout timers */
+.sticky-timers{position:sticky;top:12px;z-index:25;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;padding:10px;background:rgba(23,54,93,.92);border:1px solid rgba(255,255,255,.12);border-radius:18px;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(23,54,93,.22)}
+.timer-block{background:var(--navy);border:1px solid rgba(255,255,255,.14);border-radius:15px;padding:12px;box-shadow:none;text-align:center;color:#fff}
+.timer-block span{display:block;color:rgba(255,255,255,.76);font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.timer-block strong{display:block;font-size:1.4rem;margin-top:4px;font-variant-numeric:tabular-nums;color:#fff}
+.timer-controls{display:flex;gap:6px;margin-top:8px}.timer-action{flex:1;border:0;border-radius:11px;padding:8px 4px;font-size:.72rem;font-weight:850;background:#fff;color:var(--navy)}.timer-action:active{transform:scale(.97)}@media(max-width:440px){.sticky-timers{grid-template-columns:1fr}.timer-controls{flex-wrap:wrap}.timer-action{flex:1 1 30%}}
