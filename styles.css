@@ -15,11 +15,11 @@ body.dark{--bg:#101820;--card:#18232d;--text:#edf4f8;--muted:#a8b5be;--line:#344
 
 /* Workout timers */
 .sticky-timers{position:sticky;top:12px;z-index:25;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px;padding:8px;background:rgba(23,54,93,.92);border:1px solid rgba(255,255,255,.12);border-radius:18px;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(23,54,93,.22)}
-.timer-block{background:var(--navy);border:1px solid rgba(255,255,255,.14);border-radius:15px;padding:8px 10px;box-shadow:none;text-align:center;color:#fff}
-.timer-block span{display:block;color:rgba(255,255,255,.76);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
-.timer-block strong{display:block;font-size:1.1rem;margin-top:3px;font-variant-numeric:tabular-nums;color:#fff}
-.timer-controls{display:flex;gap:6px;margin-top:6px}
-.timer-action{flex:1;border:0;border-radius:10px;padding:7px 4px;font-size:.68rem;font-weight:850;background:#fff;color:var(--navy)}
+.timer-block{background:var(--navy);border:1px solid rgba(255,255,255,.14);border-radius:15px;padding:10px 10px 11px;box-shadow:none;text-align:center;color:#fff;min-height:126px}
+.timer-block span{display:block;color:rgba(255,255,255,.76);font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.07em}
+.timer-block strong{display:block;font-size:1.3rem;margin-top:5px;font-variant-numeric:tabular-nums;color:#fff;line-height:1}
+.timer-controls{display:flex;gap:6px;margin-top:8px}
+.timer-action{flex:1;border:0;border-radius:10px;padding:8px 6px;font-size:.76rem;font-weight:900;background:#fff;color:var(--navy);min-width:0}
 .timer-action.stop{background:#fff0f0;color:var(--danger)}
 .timer-action.start{background:#eef7ff;color:var(--navy)}
 @media(max-width:440px){
@@ -28,19 +28,23 @@ body.dark{--bg:#101820;--card:#18232d;--text:#edf4f8;--muted:#a8b5be;--line:#344
     gap:6px !important;
   }
   .timer-block{
-    padding:7px 8px !important;
+    padding:9px 8px 10px !important;
+    min-height:118px !important;
+  }
+  .timer-block span{
+    font-size:.66rem !important;
   }
   .timer-block strong{
-    font-size:1rem !important;
+    font-size:1.18rem !important;
+    margin-top:4px !important;
   }
   .timer-controls{
     gap:4px !important;
-    margin-top:5px !important;
+    margin-top:7px !important;
   }
   .timer-action{
-    padding:5px 2px !important;
-    font-size:.6rem !important;
-    min-width:0 !important;
+    padding:7px 4px !important;
+    font-size:.68rem !important;
   }
 }
 
