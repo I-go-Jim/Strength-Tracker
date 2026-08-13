@@ -16,8 +16,8 @@ body.dark{--bg:#101820;--card:#18232d;--text:#edf4f8;--muted:#a8b5be;--line:#344
 /* Workout timers */
 .sticky-timers{position:sticky;top:12px;z-index:25;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px;padding:8px;background:rgba(23,54,93,.92);border:1px solid rgba(255,255,255,.12);border-radius:18px;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(23,54,93,.22)}
 .timer-block{background:var(--navy);border:1px solid rgba(255,255,255,.14);border-radius:15px;padding:10px 10px 11px;box-shadow:none;text-align:center;color:#fff;min-height:126px}
-.timer-block span{display:block;color:rgba(255,255,255,.76);font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.07em}
-.timer-block strong{display:block;font-size:1.3rem;margin-top:5px;font-variant-numeric:tabular-nums;color:#fff;line-height:1}
+.timer-block span{display:block;color:rgba(255,255,255,.92);font-size:.82rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.timer-block strong{display:block;font-size:1.52rem;margin-top:5px;font-variant-numeric:tabular-nums;color:#fff;line-height:1}
 .timer-controls{display:flex;gap:6px;margin-top:8px}
 .timer-action{flex:1;border:0;border-radius:10px;padding:8px 6px;font-size:.76rem;font-weight:900;background:#fff;color:var(--navy);min-width:0}
 .timer-action.stop{background:#fff0f0;color:var(--danger)}
@@ -29,13 +29,13 @@ body.dark{--bg:#101820;--card:#18232d;--text:#edf4f8;--muted:#a8b5be;--line:#344
   }
   .timer-block{
     padding:9px 8px 10px !important;
-    min-height:118px !important;
+    min-height:122px !important;
   }
   .timer-block span{
-    font-size:.66rem !important;
+    font-size:.76rem !important;
   }
   .timer-block strong{
-    font-size:1.18rem !important;
+    font-size:1.34rem !important;
     margin-top:4px !important;
   }
   .timer-controls{
@@ -45,6 +45,7 @@ body.dark{--bg:#101820;--card:#18232d;--text:#edf4f8;--muted:#a8b5be;--line:#344
   .timer-action{
     padding:7px 4px !important;
     font-size:.68rem !important;
+    min-width:0 !important;
   }
 }
 
