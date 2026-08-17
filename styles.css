@@ -120,16 +120,23 @@ body.dark{--bg:#101820;--card:#18232d;--text:#edf4f8;--muted:#a8b5be;--line:#344
 
 /* Exercise library */
 .exercise-library-grid{display:grid;gap:10px}
-.exercise-item{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow)}
-.exercise-item-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}
-.exercise-item-head strong{font-size:.98rem}
-.exercise-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.exercise-meta label{display:flex;flex-direction:column;gap:4px;font-size:.68rem;color:var(--muted);font-weight:800}
-.exercise-meta input{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 9px;color:var(--text)}
+.exercise-item{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow);overflow:hidden}
+.exercise-item-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px;min-width:0}
+.exercise-item-head strong{font-size:.98rem;word-break:break-word;overflow-wrap:anywhere;min-width:0}
+.exercise-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:0}
+.exercise-meta label{display:flex;flex-direction:column;gap:4px;font-size:.68rem;color:var(--muted);font-weight:800;min-width:0}
+.exercise-meta input{width:100%;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 9px;color:var(--text)}
 .exercise-actions{display:flex;gap:8px;margin-top:10px}
-.exercise-actions button{flex:1;padding:9px 10px;border-radius:10px;font-size:.8rem;font-weight:850}
+.exercise-actions button{flex:1;min-width:0;padding:9px 10px;border-radius:10px;font-size:.8rem;font-weight:850}
 .exercise-actions .danger{margin-top:0}
-@media(max-width:440px){.exercise-meta{grid-template-columns:1fr 1fr}.exercise-actions{flex-direction:column}}
+@media(max-width:440px){
+  .exercise-item{padding:11px}
+  .exercise-item-head{align-items:flex-start}
+  .exercise-meta{grid-template-columns:1fr;gap:7px}
+  .exercise-meta input{font-size:.95rem}
+  .exercise-actions{flex-direction:column}
+  .exercise-actions button{width:100%}
+}
 
 /* Workout template editor */
 .template-list{display:grid;gap:12px}
