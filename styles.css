@@ -48,6 +48,76 @@ body.dark{--bg:#101820;--card:#18232d;--text:#edf4f8;--muted:#a8b5be;--line:#344
   }
 }
 
+/* Draft workout resume card */
+.draft-resume-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin:10px 0 4px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid #bfd6f2;
+  background:#eef7ff;
+  box-shadow:var(--shadow);
+}
+.draft-resume-card strong{
+  display:block;
+  font-size:.92rem;
+  color:var(--navy);
+  margin-bottom:2px;
+}
+.draft-resume-card small{
+  color:var(--muted);
+  font-weight:700;
+}
+.draft-resume-card .resume-actions{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.draft-resume-card .secondary{
+  padding:10px 14px;
+  white-space:nowrap;
+}
+.draft-resume-card .discard-btn{
+  border:0;
+  background:transparent;
+  color:var(--danger);
+  font-size:.78rem;
+  font-weight:800;
+  padding:6px 4px;
+}
+@media(max-width:440px){
+  .draft-resume-card{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .draft-resume-card .resume-actions{
+    flex-direction:column;
+  }
+  .draft-resume-card .secondary,
+  .draft-resume-card .discard-btn{
+    width:100%;
+    text-align:center;
+  }
+}
+
+/* Workout button disabled state while draft exists */
+.workout-choice:disabled{
+  opacity:.38;
+  filter:grayscale(.25);
+  box-shadow:none;
+  cursor:not-allowed;
+  transform:none;
+  background:color-mix(in srgb, var(--card) 72%, var(--muted) 28%);
+  border-style:dashed;
+}
+.workout-choice:disabled strong,
+.workout-choice:disabled span{
+  color:var(--muted);
+}
+
 /* Exercise library */
 .exercise-library-grid{display:grid;gap:10px}
 .exercise-item{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;box-shadow:var(--shadow)}
@@ -84,3 +154,199 @@ body.dark{--bg:#101820;--card:#18232d;--text:#edf4f8;--muted:#a8b5be;--line:#344
 body.workout-mode .app-header{display:none}
 body.workout-mode main{padding-top:10px}
 body.workout-mode .section-heading{margin-top:0}
+
+/* Mobile polish pass */
+@media (max-width: 440px) {
+  main {
+    padding: 12px;
+  }
+
+  h2 {
+    margin: 18px 0 10px;
+    font-size: 1.18rem;
+  }
+
+  .week-card {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .week-card strong {
+    font-size: 1.22rem;
+  }
+
+  .draft-resume-card {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 16px;
+    gap: 12px;
+  }
+
+  .draft-resume-card strong {
+    font-size: 1rem;
+  }
+
+  .draft-resume-card small {
+    font-size: .78rem;
+    line-height: 1.2;
+  }
+
+  .workout-grid {
+    gap: 8px;
+  }
+
+  .workout-choice {
+    min-height: 84px;
+    padding: 11px 12px;
+    border-radius: 14px;
+  }
+
+  .workout-choice strong {
+    font-size: 1rem;
+    margin-bottom: 4px;
+  }
+
+  .workout-choice span {
+    font-size: .72rem;
+  }
+
+  .workout-choice:disabled {
+    opacity: .34;
+  }
+
+  .card {
+    padding: 14px;
+    border-radius: 15px;
+    margin: 12px 0;
+  }
+
+  .exercise-head {
+    padding: 10px 10px 8px;
+    gap: 8px;
+  }
+
+  .exercise-head h3 {
+    font-size: .94rem;
+  }
+
+  .goal {
+    font-size: .7rem;
+  }
+
+  .weight-wrap {
+    width: 170px;
+  }
+
+  .weight-controls {
+    gap: 5px;
+  }
+
+  .weight-adjust {
+    height: 40px;
+    font-size: .78rem;
+  }
+
+  .weight-controls .weight-input {
+    height: 40px;
+  }
+
+  .sets-label {
+    font-size: .64rem;
+    padding: 4px;
+  }
+
+  .set-cell {
+    padding: 5px;
+  }
+
+  .set-cell label {
+    font-size: .62rem;
+  }
+
+  .set-cell input {
+    font-size: 1rem;
+    padding: 6px 2px;
+  }
+
+  .recommendation {
+    font-size: .72rem;
+    padding: 7px 10px;
+  }
+
+  .sticky-action {
+    bottom: 78px;
+  }
+
+  .bottom-nav {
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    gap: 3px;
+  }
+
+  .bottom-nav button {
+    padding: 6px 1px;
+    font-size: .58rem;
+  }
+
+  .bottom-nav button span {
+    font-size: .98rem;
+    margin-bottom: 2px;
+  }
+
+  .history-tabs {
+    margin: 10px 0;
+  }
+
+  .history-tabs button {
+    padding: 8px;
+    font-size: .82rem;
+  }
+
+  .metric-card,
+  .stat {
+    padding: 11px;
+    border-radius: 13px;
+  }
+
+  .metric-card strong {
+    font-size: 1.1rem;
+  }
+
+  .stat strong {
+    font-size: .95rem;
+  }
+
+  .template-card,
+  .exercise-item {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .template-head,
+  .exercise-item-head {
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 380px) {
+  .workout-choice {
+    min-height: 80px;
+    padding: 10px 11px;
+  }
+
+  .workout-choice strong {
+    font-size: .96rem;
+  }
+
+  .draft-resume-card {
+    padding: 11px;
+  }
+
+  .draft-resume-card .secondary,
+  .draft-resume-card .discard-btn {
+    width: 100%;
+  }
+
+  .weight-wrap {
+    width: 160px;
+  }
+}
