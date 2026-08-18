@@ -29,7 +29,8 @@ const DEFAULT_WORKOUTS=[
  {id:'upper-strength',name:'Upper Strength',day:'Monday',exerciseIds:['bench-press','weighted-pull-ups','standing-ohp','barbell-row','dips','hammer-curl']},
  {id:'lower-strength',name:'Lower Strength',day:'Tuesday',exerciseIds:['back-squat','deadlift','bulgarian-split-squat','leg-curl','pinky-crushers','weighted-back-extension']},
  {id:'upper-volume',name:'Upper Volume',day:'Thursday',exerciseIds:['incline-db-bench','chest-supported-row','seated-db-press','lat-pulldown','lateral-raise','triceps-pushdown','ez-bar-curl']},
- {id:'lower-volume',name:'Lower Volume',day:'Friday',exerciseIds:['front-squat','romanian-deadlift','leg-extension','leg-press','calf-raise','ab-wheel']}
+ {id:'lower-volume',name:'Lower Volume',day:'Friday',exerciseIds:['front-squat','romanian-deadlift','leg-extension','leg-press','calf-raise','ab-wheel']},
+ {id:'one-rep-max',name:'1RM Test Day',day:'Week 6+',exerciseIds:['back-squat','bench-press','deadlift','lat-pulldown','leg-curl','triceps-pushdown','ab-wheel'],maxTestLiftIds:['back-squat','bench-press','deadlift']}
 ];
 const STORE='seanStrengthTrackerV12';
 const DRAFT_STORE='seanStrengthTrackerDraftV4';
@@ -93,7 +94,8 @@ const ACHIEVEMENT_LEVELS={
   medium:{label:'Medium',coins:20},
   hard:{label:'Hard',coins:50},
   veryHard:{label:'Very Hard',coins:100},
-  legendary:{label:'Legendary',coins:1}
+  legendary:{label:'Legendary',coins:1},
+  completionist:{label:'Completionists',coins:25}
 };
 const ACHIEVEMENTS=[
   {id:'workouts-1',name:'First Step',description:'Complete 1 workout',level:'easy',type:'workouts',target:1},
@@ -108,10 +110,18 @@ const ACHIEVEMENTS=[
   {id:'total-700',name:'700 lb Club',description:'Reach a 700 lb combined total',level:'easy',type:'total',target:700},
   {id:'workouts-25',name:'Staying Consistent',description:'Complete 25 workouts',level:'medium',type:'workouts',target:25},
   {id:'weekly-4',name:'Four-Day Focus',description:'Train on 4 distinct days in one week',level:'medium',type:'weeklyDays',target:4},
+  {id:'max-test-1',name:'Strength Tested',description:'Complete a 1RM Test Day',level:'medium',type:'maxTestDays',target:1},
   {id:'rotation-4',name:'Full Rotation',description:'Complete each of the four workout templates',level:'medium',type:'rotation',target:4},
   {id:'ohp-135',name:'Strong Shoulders',description:'Standing OHP 135 lb',level:'medium',type:'lift',lift:'standing-ohp',target:135},
   {id:'streak-6',name:'Six-Week Streak',description:'Train during 6 consecutive weeks',level:'medium',type:'streak',target:6},
   {id:'total-800',name:'800 lb Club',description:'Reach an 800 lb combined total',level:'medium',type:'total',target:800},
+  {id:'completionist-themes',name:'Theme Collector',description:'Purchase every theme',level:'completionist',type:'storeCollection',collection:'themes',target:STORE_THEMES.filter(item=>item.price>0).length},
+  {id:'completionist-celebrations',name:'Celebrate Everything',description:'Purchase every completion celebration',level:'completionist',type:'storeCollection',collection:'celebration',target:STORE_EXTRAS.filter(item=>item.category==='celebration'&&item.price>0).length},
+  {id:'completionist-trophies',name:'Trophy Cabinet',description:'Purchase every trophy',level:'completionist',type:'storeCollection',collection:'trophy',target:STORE_EXTRAS.filter(item=>item.category==='trophy'&&item.price>0).length},
+  {id:'completionist-titles',name:'Many Names',description:'Purchase every profile title',level:'completionist',type:'storeCollection',collection:'title',target:STORE_EXTRAS.filter(item=>item.category==='title'&&item.price>0).length},
+  {id:'completionist-timers',name:'Timekeeper',description:'Purchase every timer design',level:'completionist',type:'storeCollection',collection:'timer',target:STORE_EXTRAS.filter(item=>item.category==='timer'&&item.price>0).length},
+  {id:'completionist-cards',name:'Card Connoisseur',description:'Purchase every workout card style',level:'completionist',type:'storeCollection',collection:'cards',target:STORE_EXTRAS.filter(item=>item.category==='cards'&&item.price>0).length},
+  {id:'completionist-store',name:'Store Completionist',description:'Purchase every item in the store',level:'completionist',type:'storeCollection',collection:'all',target:STORE_THEMES.filter(item=>item.price>0).length+STORE_EXTRAS.filter(item=>item.price>0).length},
   {id:'workouts-48',name:'Program Finisher',description:'Complete 48 workouts',level:'hard',type:'workouts',target:48},
   {id:'bench-225',name:'Elite Bench Club',description:'Bench 225 lb',level:'hard',type:'lift',lift:'bench-press',target:225},
   {id:'squat-315',name:'Elite Squat Club',description:'Squat 315 lb',level:'hard',type:'lift',lift:'back-squat',target:315},
@@ -134,6 +144,13 @@ const parsed=raw?JSON.parse(raw):null;
 const state={selected:null,data:parsed&&parsed.exercises&&parsed.workouts?parsed:{history:parsed?.history||[],exercises:DEFAULT_EXERCISES.slice(),workouts:DEFAULT_WORKOUTS.slice()}};
 if(!state.data.exercises)state.data.exercises=DEFAULT_EXERCISES.slice();
 if(!state.data.workouts)state.data.workouts=DEFAULT_WORKOUTS.slice();
+if(state.data.maxTestTemplateVersion!==3){
+  const updatedTemplate=structuredClone(DEFAULT_WORKOUTS.find(workout=>workout.id==='one-rep-max'));
+  const templateIndex=state.data.workouts.findIndex(workout=>workout.id==='one-rep-max');
+  if(templateIndex<0)state.data.workouts.push(updatedTemplate);
+  else state.data.workouts[templateIndex]=updatedTemplate;
+  state.data.maxTestTemplateVersion=3;
+}
 const abWheel=state.data.exercises.find(exercise=>exercise.id==='ab-wheel');
 if(abWheel)abWheel.step=5;
 normalizeRewardData();
@@ -241,7 +258,11 @@ function saveDraft(){
     exercises:[...document.querySelectorAll('.exercise-card')].map(card=>({
       idx:Number(card.dataset.idx),
       weight:card.querySelector('.weight-input')?.value||'',
-      sets:[...card.querySelectorAll('.set-cell input')].map(i=>i.value||'')
+      sets:[...card.querySelectorAll('.set-cell input')].map(i=>i.value||''),
+      attempts:[...card.querySelectorAll('.attempt-row')].map(row=>({
+        weight:row.querySelector('.attempt-weight')?.value||'',
+        successful:row.querySelector('.attempt-success')?.checked||false
+      }))
     }))
   };
   localStorage.setItem(DRAFT_STORE,JSON.stringify(draft));
@@ -338,12 +359,22 @@ function achievementStats(){
   });
   return{
     workouts:history.length,
+    maxTestDays:history.filter(workout=>workout.workoutId==='one-rep-max'||workout.type==='1RM Test Day').length,
     weeklyDays:Math.max(0,...[...weeklyDates.values()].map(dates=>dates.size)),
     liftWeights,
     sets,
     volume,
     rotation:completedTemplates.size,
     streak,
+    storeCollections:{
+      themes:STORE_THEMES.filter(item=>item.price>0&&state.data.ownedThemes.includes(item.id)).length,
+      celebration:STORE_EXTRAS.filter(item=>item.category==='celebration'&&item.price>0&&state.data.ownedStoreItems.includes(item.id)).length,
+      trophy:STORE_EXTRAS.filter(item=>item.category==='trophy'&&item.price>0&&state.data.ownedStoreItems.includes(item.id)).length,
+      title:STORE_EXTRAS.filter(item=>item.category==='title'&&item.price>0&&state.data.ownedStoreItems.includes(item.id)).length,
+      timer:STORE_EXTRAS.filter(item=>item.category==='timer'&&item.price>0&&state.data.ownedStoreItems.includes(item.id)).length,
+      cards:STORE_EXTRAS.filter(item=>item.category==='cards'&&item.price>0&&state.data.ownedStoreItems.includes(item.id)).length,
+      all:STORE_THEMES.filter(item=>item.price>0&&state.data.ownedThemes.includes(item.id)).length+STORE_EXTRAS.filter(item=>item.price>0&&state.data.ownedStoreItems.includes(item.id)).length
+    },
     poozerPurchases:[
       state.data.ownedThemes.includes('poozer'),
       state.data.ownedStoreItems.includes('trophy-poozer'),
@@ -354,6 +385,7 @@ function achievementStats(){
 }
 function achievementValue(achievement,stats){
   if(achievement.type==='workouts')return stats.workouts;
+  if(achievement.type==='maxTestDays')return stats.maxTestDays;
   if(achievement.type==='weeklyDays')return stats.weeklyDays;
   if(achievement.type==='lift')return stats.liftWeights[achievement.lift]||0;
   if(achievement.type==='sets')return stats.sets;
@@ -361,16 +393,19 @@ function achievementValue(achievement,stats){
   if(achievement.type==='rotation')return stats.rotation;
   if(achievement.type==='streak')return stats.streak;
   if(achievement.type==='poozerPurchases')return stats.poozerPurchases;
+  if(achievement.type==='storeCollection')return stats.storeCollections[achievement.collection]||0;
   return stats.total;
 }
 function achievementProgressText(achievement,value){
   if(achievement.type==='workouts')return `${Math.min(value,achievement.target)} / ${achievement.target} workouts`;
+  if(achievement.type==='maxTestDays')return `${Math.min(value,achievement.target)} / ${achievement.target} test day`;
   if(achievement.type==='weeklyDays')return `${Math.min(value,achievement.target)} / ${achievement.target} days`;
   if(achievement.type==='sets')return `${Math.min(value,achievement.target)} / ${achievement.target} sets`;
   if(achievement.type==='volume')return `${formatVolume(Math.min(value,achievement.target))} / ${formatVolume(achievement.target)}`;
   if(achievement.type==='rotation')return `${Math.min(value,achievement.target)} / ${achievement.target} templates`;
   if(achievement.type==='streak')return `${Math.min(value,achievement.target)} / ${achievement.target} weeks`;
   if(achievement.type==='poozerPurchases')return `${Math.min(value,achievement.target)} / ${achievement.target} Poozer items`;
+  if(achievement.type==='storeCollection')return `${Math.min(value,achievement.target)} / ${achievement.target} purchased`;
   return `${Math.min(value,achievement.target)} / ${achievement.target} lb`;
 }
 function revokeInvalidAchievements(){
@@ -409,14 +444,19 @@ function renderHome(){
   state.data.workouts.forEach(w=>{
     const b=document.createElement('button');
     b.className='workout-choice';
-    b.innerHTML=`<strong>${w.name}</strong><span>${w.exerciseIds.length} exercises</span><span class="workout-day">${w.day}</span>`;
+    const locked=w.id==='one-rep-max'&&currentProgramWeek()<6;
+    b.innerHTML=`<strong>${w.name}</strong><span>${w.exerciseIds.length} exercises${locked?' · Unlocks Week 6':''}</span><span class="workout-day">${locked?'🔒 ':''}${w.day}</span>`;
     b.onclick=()=>startWorkoutFromHome(w.id);
-    b.disabled=draft&&draft.selected!==null;
+    b.disabled=!!(draft&&draft.selected!==null)||locked;
     el.appendChild(b);
   });
 }
 
 function startWorkoutFromHome(workoutId){
+  if(workoutId==='one-rep-max'&&currentProgramWeek()<6){
+    toast('1RM Test Day unlocks in Week 6');
+    return;
+  }
   if(isDraftInProgress()){
     toast('Workout in progress.');
     return;
@@ -427,6 +467,7 @@ function startWorkoutFromHome(workoutId){
 function openWorkout(workoutId){
   const workout=workoutById(workoutId)||state.data.workouts[0];
   if(!workout)return;
+  if(workout.id==='one-rep-max'&&currentProgramWeek()<6){toast('1RM Test Day unlocks in Week 6');return}
   state.selected=workout.id;
   $('#workoutTitle').textContent=workout.name;
   $('#workoutDate').value=new Date().toISOString().slice(0,10);
@@ -462,16 +503,20 @@ function discardDraftWorkout(){
 function renderWorkoutEditor(workout){
   const wrap=$('#exerciseList');
   if(!wrap)return;
-  wrap.innerHTML='';
+  wrap.innerHTML=workout.id==='one-rep-max'?'<div class="max-test-notice"><strong>1RM Test Day</strong><span>Warm up thoroughly, use a spotter or safety arms, and stop if a lift feels unsafe. Only successful attempts count toward records and achievements.</span></div>':'';
   workout.exerciseIds.forEach((exerciseId,idx)=>{
     const ex=exerciseById(exerciseId);
     if(!ex)return;
     const last=lastEntry(ex.name),best=bestE1RM(ex.name);
+    const sets=ex.defaultSets;
     const reps=Number(ex.reps)||0;
+    const isMaxLift=workout.maxTestLiftIds?.includes(exerciseId);
     const card=document.createElement('article');
-    card.className='exercise-card';
+    card.className=`exercise-card${isMaxLift?' max-attempt-card':''}`;
     card.dataset.idx=idx;
-    card.innerHTML=`<div class="exercise-head"><div><h3>${ex.name}${best?'<span class="pr-badge">e1RM '+best+'</span>':''}</h3><span class="goal">${ex.defaultSets} × ${reps}</span></div><div class="weight-wrap"><label>Weight</label><div class="weight-controls"><button type="button" class="weight-adjust" data-adjust="-5" aria-label="Decrease weight by 5 pounds">-5</button><input class="weight-input" type="number" step="5" inputmode="decimal" value="${last?.weight??''}" placeholder="lb"><button type="button" class="weight-adjust" data-adjust="5" aria-label="Increase weight by 5 pounds">+5</button></div></div></div>${last?`<div class="last-line">Last: ${last.weight} lb × ${last.reps.join(' / ')} on ${last.date}</div>`:''}<div class="sets-label">Sets and reps</div><div class="sets-grid" style="--sets:${ex.defaultSets}">${Array.from({length:ex.defaultSets},(_,i)=>`<div class="set-cell"><label>S${i+1}</label><input inputmode="numeric" maxlength="3" aria-label="${ex.name} set ${i+1} reps"></div>`).join('')}</div><div class="recommendation hold">Enter all sets to see progression</div>`;
+    card.innerHTML=isMaxLift
+      ?`<div class="exercise-head"><div><h3>${ex.name}${best?'<span class="pr-badge">Best '+best+' lb</span>':''}</h3><span class="goal">Up to 3 one-rep attempts</span></div></div>${last?`<div class="last-line">Previous best: ${last.weight} lb on ${last.date}</div>`:''}<div class="sets-label">1RM attempts</div><div class="attempt-grid">${[1,2,3].map(attempt=>`<div class="attempt-row"><label>Attempt ${attempt}<input class="attempt-weight" type="number" min="0" step="5" inputmode="decimal" placeholder="lb"></label><label class="attempt-result"><input class="attempt-success" type="checkbox"> Successful</label></div>`).join('')}</div>`
+      :`<div class="exercise-head"><div><h3>${ex.name}${best?'<span class="pr-badge">e1RM '+best+'</span>':''}</h3><span class="goal">${sets} × ${reps}</span></div><div class="weight-wrap"><label>Weight</label><div class="weight-controls"><button type="button" class="weight-adjust" data-adjust="-5" aria-label="Decrease weight by 5 pounds">-5</button><input class="weight-input" type="number" step="5" inputmode="decimal" value="${last?.weight??''}" placeholder="lb"><button type="button" class="weight-adjust" data-adjust="5" aria-label="Increase weight by 5 pounds">+5</button></div></div></div>${last?`<div class="last-line">Last: ${last.weight} lb × ${last.reps.join(' / ')} on ${last.date}</div>`:''}<div class="sets-label">Sets and reps</div><div class="sets-grid" style="--sets:${sets}">${Array.from({length:sets},(_,i)=>`<div class="set-cell"><label>S${i+1}</label><input inputmode="numeric" maxlength="3" aria-label="${ex.name} set ${i+1} reps"></div>`).join('')}</div><div class="recommendation hold">Enter all sets to see progression</div>`;
     wrap.appendChild(card);
     card.querySelectorAll('.weight-adjust').forEach(button=>button.addEventListener('click',()=>{
       const input=card.querySelector('.weight-input');
@@ -480,6 +525,7 @@ function renderWorkoutEditor(workout){
       updateRecommendation(card,ex);
     }));
     card.querySelectorAll('.set-cell input').forEach(i=>i.addEventListener('input',()=>{saveDraft();updateRecommendation(card,ex)}));
+    card.querySelectorAll('.attempt-weight,.attempt-success').forEach(input=>input.addEventListener('input',saveDraft));
   });
   if(loadDraft()?.selected===state.selected)restoreDraftIntoRenderedWorkout();
 }
@@ -493,6 +539,10 @@ function restoreDraftIntoRenderedWorkout(){
     const weight=card.querySelector('.weight-input');
     if(weight)weight.value=draftItem.weight||'';
     [...card.querySelectorAll('.set-cell input')].forEach((input,i)=>{input.value=draftItem.sets?.[i]||''});
+    [...card.querySelectorAll('.attempt-row')].forEach((row,i)=>{
+      row.querySelector('.attempt-weight').value=draftItem.attempts?.[i]?.weight||'';
+      row.querySelector('.attempt-success').checked=!!draftItem.attempts?.[i]?.successful;
+    });
   });
   const dateInput=$('#workoutDate');
   if(draft.date&&dateInput)dateInput.value=draft.date;
@@ -549,6 +599,14 @@ function saveWorkout(){
   const exercises=workout?.exerciseIds.map((exerciseId,idx)=>{
     const ex=exerciseById(exerciseId);
     const card=$(`.exercise-card[data-idx="${idx}"]`);
+    if(workout.maxTestLiftIds?.includes(exerciseId)){
+      const attempts=[...card.querySelectorAll('.attempt-row')].map(row=>({
+        weight:Number(row.querySelector('.attempt-weight').value)||0,
+        successful:row.querySelector('.attempt-success').checked
+      })).filter(attempt=>attempt.weight>0);
+      const successful=attempts.filter(attempt=>attempt.successful);
+      return{exerciseId,name:ex.name,weight:Math.max(0,...successful.map(attempt=>attempt.weight)),reps:successful.length?[1]:[],attempts};
+    }
     return{
       exerciseId,
       name:ex.name,
@@ -556,6 +614,8 @@ function saveWorkout(){
       reps:[...card.querySelectorAll('.set-cell input')].map(i=>Number(i.value)||0)
     };
   })||[];
+  const maxEntries=exercises.filter(entry=>workout.maxTestLiftIds?.includes(entry.exerciseId));
+  if(maxEntries.some(entry=>!entry.attempts.length)){toast('Enter at least one attempt for each main lift');return}
   if(exercises.some(e=>e.reps.some(r=>r===0))){toast('Enter reps for every set');return}
   const coinsAwarded=durationMs>REWARD_DURATION_MS?WORKOUT_REWARD:0;
   state.data.history.push({id:Date.now(),date,type:workout.name,workoutId:workout.id,programWeek:1,durationMs,coinsAwarded,exercises});
@@ -580,7 +640,8 @@ function renderHistory(){
   if(volumeSummary)volumeSummary.innerHTML=`<span>Lifetime working-weight volume</span><strong>${formatVolume(totalVolume)}</strong>`;
   el.innerHTML=state.data.history.length?state.data.history.slice().reverse().map(w=>{
     const timeText=typeof w.durationMs==='number'&&w.durationMs>0?formatDuration(w.durationMs):'--';
-    return`<details class="card history-item"><summary><div class="history-summary-row"><div class="history-left"><strong class="history-workout-name">${w.type}</strong><span class="history-time" style="display:inline-block;margin-left:18px;min-width:64px;">${timeText}</span><small class="history-volume">${formatVolume(workoutVolume(w))} volume</small></div><div class="history-right"><span class="history-date">${w.date}${[6,12].includes(Number(w.programWeek))?' (Deload)':''}</span><button class="trash-btn" data-delete-id="${w.id}" aria-label="Delete ${w.type} on ${w.date}" title="Delete workout">🗑</button></div></div></summary><div class="history-details">${w.exercises.map(e=>{const best=Math.max(...e.reps.map(r=>e1rm(e.weight,r)));return`<div class="history-exercise"><strong>${e.name}</strong><span>${e.weight||'Bodyweight'}${e.weight?' lb':''}</span><small>Reps: ${e.reps.join(' / ')}${best?' · e1RM '+best:''}</small></div>`}).join('')}</div></details>`;
+    const isMaxTest=w.workoutId==='one-rep-max'||w.type==='1RM Test Day';
+    return`<details class="card history-item"><summary><div class="history-summary-row"><div class="history-left"><strong class="history-workout-name">${w.type}</strong><span class="history-time" style="display:inline-block;margin-left:18px;min-width:64px;">${timeText}</span><small class="history-volume">${formatVolume(workoutVolume(w))} volume</small></div><div class="history-right"><span class="history-date">${w.date}${[6,12].includes(Number(w.programWeek))?' (Deload)':''}</span><button class="trash-btn" data-delete-id="${w.id}" aria-label="Delete ${w.type} on ${w.date}" title="Delete workout">🗑</button></div></div></summary><div class="history-details">${w.exercises.map(e=>{const best=Math.max(0,...e.reps.map(r=>e1rm(e.weight,r)));const hasAttempts=Array.isArray(e.attempts);const attemptText=hasAttempts?`Attempts: ${e.attempts.map(attempt=>`${attempt.weight} lb ${attempt.successful?'✓':'×'}`).join(' · ')}`:`Reps: ${e.reps.join(' / ')}`;const weightText=hasAttempts&&!e.weight?'No successful lift':`${Number(e.weight)||0} lb`;return`<div class="history-exercise"><strong>${e.name}</strong><span>${weightText}</span><small>${attemptText}${best&&!isMaxTest?' · e1RM '+best:''}</small></div>`}).join('')}</div></details>`;
   }).join(''):'<div class="card"><h3>No workouts saved yet</h3><p>Complete a workout and it will appear here.</p></div>';
   el.querySelectorAll('.trash-btn').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();deleteWorkout(Number(button.dataset.deleteId))}));
   renderExerciseSelect();
@@ -620,7 +681,7 @@ function renderExerciseHistory(){
   const stats=$('#exerciseStats');
   if(stats)stats.innerHTML=`<div class="stat"><span>Last load</span><strong>${last?last.weight+' lb':'--'}</strong></div><div class="stat"><span>Best e1RM</span><strong>${best||'--'}</strong></div><div class="stat"><span>Sessions</span><strong>${entries.length}</strong></div>`;
   const list=$('#exerciseHistoryList');
-  if(list)list.innerHTML=entries.slice().reverse().map(e=>`<div class="card exercise-log"><strong>${e.date}</strong><span>${e.weight} lb · ${e.reps.join('/')}</span><span class="e1rm">e1RM ${Math.max(...e.reps.map(r=>e1rm(e.weight,r)))}</span></div>`).join('')||'<div class="card"><p>No entries yet.</p></div>';
+  if(list)list.innerHTML=entries.slice().reverse().map(e=>`<div class="card exercise-log"><strong>${e.date}</strong><span>${Number(e.weight)||0} lb · ${e.reps.join('/')}</span>${e.type==='1RM Test Day'?'':`<span class="e1rm">e1RM ${Math.max(0,...e.reps.map(r=>e1rm(e.weight,r)))}</span>`}</div>`).join('')||'<div class="card"><p>No entries yet.</p></div>';
   if(entries.length)drawChart(entries);
 }
 
@@ -765,7 +826,7 @@ function renderAchievements(){
       return`<article class="achievement-card ${claimed?'unlocked':complete?'claimable':'locked'}"><div class="achievement-icon" aria-hidden="true">${claimed?'✓':complete?'!':'◇'}</div><div class="achievement-info"><div class="achievement-title"><h3>${achievement.name}</h3><span class="difficulty ${level}">${details.label}</span></div><p>${achievement.description}</p><div class="achievement-progress"><span style="width:${percent}%"></span></div><small>${claimed?'Claimed':complete?'Completed · reward ready':achievementProgressText(achievement,value)}</small></div>${reward}</article>`;
     }).join('');
     const tierReward=level==='legendary'?'???? coins':`${details.coins} coins each`;
-    return`<section class="achievement-tier"><h2>${details.label}<span>${tierReward}</span></h2>${cards}</section>`;
+    return`<section class="achievement-tier ${level}"><h2>${details.label}<span>${tierReward}</span></h2>${cards}</section>`;
   }).join('');
   $('#claimAllAchievements')?.addEventListener('click',()=>claimAchievementRewards(available.map(achievement=>achievement.id)));
   el.querySelectorAll('[data-claim-achievement]').forEach(button=>button.addEventListener('click',()=>claimAchievementRewards([button.dataset.claimAchievement])));
