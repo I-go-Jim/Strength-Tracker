@@ -23,7 +23,7 @@ const DEFAULT_EXERCISES=[
  {id:'leg-extension',name:'Leg Extension',defaultSets:4,reps:15,step:5},
  {id:'leg-press',name:'Leg Press',defaultSets:3,reps:15,step:10},
  {id:'calf-raise',name:'Calf Raise',defaultSets:4,reps:15,step:5},
- {id:'ab-wheel',name:'Ab Wheel',defaultSets:4,reps:10,step:0}
+ {id:'ab-wheel',name:'Ab Wheel',defaultSets:4,reps:10,step:5}
 ];
 const DEFAULT_WORKOUTS=[
  {id:'upper-strength',name:'Upper Strength',day:'Monday',exerciseIds:['bench-press','weighted-pull-ups','standing-ohp','barbell-row','dips','hammer-curl']},
