@@ -22,6 +22,9 @@ main{max-width:760px;margin:auto;padding:16px}
 .week-card span{font-size:.78rem;opacity:.78}
 .week-card strong{font-size:1.35rem}
 .workout-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.workout-choice-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:20px 0 12px}
+.workout-choice-heading h2{margin:0}
+.workout-choice-heading small{color:var(--muted);font-size:.7rem;text-align:right}
 .workout-choice{min-height:92px;padding:12px 13px;text-align:left;border:1px solid var(--line);border-radius:15px;background:var(--card);color:var(--text);box-shadow:var(--shadow)}
 .workout-choice strong{display:block;font-size:1.05rem;margin-bottom:6px;line-height:1.1}
 .workout-choice span{display:block;color:var(--muted);font-size:.76rem}
@@ -115,6 +118,8 @@ body.theme-kawaii{--bg:#fde6ef;background-color:#fde6ef;background-image:url("da
 .dark .achievement-card.claimable .achievement-icon{background:#3b2c14}
 
 @media(max-width:440px){.workout-grid{grid-template-columns:1fr}
+.workout-choice-heading{align-items:flex-start;flex-direction:column;gap:3px}
+.workout-choice-heading small{text-align:left}
 .toolbar{flex-direction:column}
 .secondary{text-align:center}
 }
