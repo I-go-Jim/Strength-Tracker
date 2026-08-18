@@ -37,17 +37,94 @@ const WORKOUT_REWARD=5;
 const REWARD_DURATION_MS=45*60*1000;
 const STORE_THEMES=[
   {id:'light',name:'Light',price:0,description:'The original clean, bright theme.'},
-  {id:'dark',name:'Dark',price:10,description:'A low-light theme for evening workouts.'},
+  {id:'dark',name:'Dark',price:15,description:'A low-light theme for evening workouts.'},
   {id:'forest',name:'Forest',price:20,description:'A deep green theme inspired by the outdoors.'},
-  {id:'america',name:'America',price:30,description:'Bold red, white, and blue from sea to shining sea.'},
-  {id:'love',name:'Love',price:40,description:'Warm blush tones with plenty of heart.'},
-  {id:'hero',name:'Comic Hero',price:50,description:'Punchy primary colors straight from a comic panel.'},
-  {id:'ocean',name:'Ocean',price:60,description:'Cool blues and seafoam for a calm training flow.'},
-  {id:'neon',name:'Neon Night',price:70,description:'Electric color on a midnight backdrop.'},
-  {id:'poop',name:'Poop',price:80,description:'Earthy brown, golden tan, and absolutely no shame.'},
-  {id:'jurassic',name:'Jurassic Park',price:90,description:'Primeval jungle greens, amber, and volcanic red.'},
+  {id:'america',name:'America',price:25,description:'Bold red, white, and blue from sea to shining sea.'},
+  {id:'love',name:'Love',price:30,description:'Warm blush tones with plenty of heart.'},
+  {id:'hero',name:'Comic Hero',price:35,description:'Punchy primary colors straight from a comic panel.'},
+  {id:'ocean',name:'Ocean',price:40,description:'Cool blues and seafoam for a calm training flow.'},
+  {id:'neon',name:'Neon Night',price:45,description:'Electric color on a midnight backdrop.'},
+  {id:'poop',name:'Poop',price:50,description:'Earthy brown, golden tan, and absolutely no shame.'},
+  {id:'jurassic',name:'Jurassic Park',price:55,description:'Primeval jungle greens, amber, and volcanic red.'},
   {id:'poozer',name:'Poozer',price:100,description:'The legendary purple-and-gold final form.'},
-  {id:'kawaii',name:'Kawaii Kitties',price:5000,description:'Pastel colors with an original parade of cartoon cats.'}
+  {id:'kawaii',name:'Kawaii Kitties',price:100,description:'Pastel colors with an original parade of cartoon cats.'}
+];
+const STORE_EXTRAS=[
+  {id:'celebration-none',category:'celebration',name:'No Celebration',price:0,icon:'—',description:'Save workouts without an animation.'},
+  {id:'celebration-confetti',category:'celebration',name:'Confetti',price:35,icon:'🎉',description:'A colorful burst after every saved workout.'},
+  {id:'celebration-fireworks',category:'celebration',name:'Fireworks',price:45,icon:'🎆',description:'Light up the screen when the work is done.'},
+  {id:'celebration-lightning',category:'celebration',name:'Lightning',price:55,icon:'⚡',description:'Finish every workout with electric energy.'},
+  {id:'celebration-coins',category:'celebration',name:'Raining Coins',price:65,icon:'🪙',description:'Make it rain after completing a workout.'},
+  {id:'trophy-none',category:'trophy',name:'No Trophy',price:0,icon:'—',description:'Keep your profile display simple.'},
+  {id:'trophy-plate',category:'trophy',name:'Golden Plate',price:40,icon:'🥇',description:'A golden weight-plate trophy for your profile.'},
+  {id:'trophy-nut',category:'trophy',name:'Golden Nut',price:45,icon:'🥜',description:'A prestigious golden nut. Nobody knows why.'},
+  {id:'trophy-poozer',category:'trophy',name:'Golden Poozer',price:100,icon:'💩',description:'The rarest symbol of Poozer excellence.'},
+  {id:'title-none',category:'title',name:'No Title',price:0,icon:'—',description:'Use no profile title.'},
+  {id:'title-iron-addict',category:'title',name:'Iron Addict',price:30,icon:'🏋️',description:'For lifters who always want one more set.'},
+  {id:'title-gym-goblin',category:'title',name:'Gym Goblin',price:35,icon:'👹',description:'Lives in the gym and guards the dumbbells.'},
+  {id:'title-poozer-ceo',category:'title',name:'Poozer CEO',price:100,icon:'👑',description:'Executive leadership for serious Poozers.'},
+  {id:'timer-standard',category:'timer',name:'Standard Timer',price:0,icon:'00:00',description:'The original clean timer design.'},
+  {id:'timer-windows95',category:'timer',name:'Windows 95',price:35,icon:'95',description:'Classic gray panels and old-school controls.'},
+  {id:'timer-comic',category:'timer',name:'Comic Style',price:45,icon:'POW!',description:'Bold outlines straight from a comic panel.'},
+  {id:'timer-arcade',category:'timer',name:'Retro Arcade',price:50,icon:'88:88',description:'Pixel-inspired neon arcade timing.'},
+  {id:'timer-digital',category:'timer',name:'Digital',price:30,icon:'12:34',description:'Bright digits on a dark electronic display.'},
+  {id:'cards-standard',category:'cards',name:'Standard Cards',price:0,icon:'▤',description:'The original workout card design.'},
+  {id:'cards-metal',category:'cards',name:'Metal Plates',price:70,icon:'⚙️',description:'Industrial steel cards built for heavy work.'},
+  {id:'cards-comic',category:'cards',name:'Comic Panels',price:75,icon:'BAM!',description:'Heavy outlines, bright panels, and action.'},
+  {id:'cards-notebook',category:'cards',name:'Notebook',price:80,icon:'📓',description:'Lined-paper workout cards with handwritten flair.'},
+  {id:'cards-holographic',category:'cards',name:'Holographic',price:135,icon:'◇',description:'A shifting premium finish for workout cards.'}
+];
+const STORE_CATEGORIES={
+  celebration:{label:'Completion Celebrations',description:'Played after completing and saving a workout.'},
+  trophy:{label:'Trophies',description:'Display one trophy beside your profile title.'},
+  title:{label:'Profile Titles',description:'Choose the title shown in the app header.'},
+  timer:{label:'Timer Designs',description:'Restyle the workout and rest timers.'},
+  cards:{label:'Workout Card Styles',description:'Change the appearance of exercise cards during workouts.'}
+};
+const DEFAULT_STORE_ITEMS={
+  celebration:'celebration-none',
+  trophy:'trophy-none',
+  title:'title-none',
+  timer:'timer-standard',
+  cards:'cards-standard'
+};
+const ACHIEVEMENT_LEVELS={
+  easy:{label:'Easy',coins:5},
+  medium:{label:'Medium',coins:20},
+  hard:{label:'Hard',coins:50},
+  veryHard:{label:'Very Hard',coins:100}
+};
+const ACHIEVEMENTS=[
+  {id:'workouts-1',name:'First Step',description:'Complete 1 workout',level:'easy',type:'workouts',target:1},
+  {id:'workouts-5',name:'Finding Your Rhythm',description:'Complete 5 workouts',level:'easy',type:'workouts',target:5},
+  {id:'workouts-10',name:'Building the Habit',description:'Complete 10 workouts',level:'easy',type:'workouts',target:10},
+  {id:'weekly-3',name:'Three-Day Week',description:'Train on 3 distinct days in one week',level:'easy',type:'weeklyDays',target:3},
+  {id:'bench-135',name:'Bench Club',description:'Bench 135 lb',level:'easy',type:'lift',lift:'bench-press',target:135},
+  {id:'squat-225',name:'Squat Club',description:'Squat 225 lb',level:'easy',type:'lift',lift:'back-squat',target:225},
+  {id:'deadlift-315',name:'Deadlift Club',description:'Deadlift 315 lb',level:'easy',type:'lift',lift:'deadlift',target:315},
+  {id:'ohp-95',name:'Press Club',description:'Standing OHP 95 lb',level:'easy',type:'lift',lift:'standing-ohp',target:95},
+  {id:'sets-100',name:'Century Setter',description:'Record 100 completed working sets',level:'easy',type:'sets',target:100},
+  {id:'total-700',name:'700 lb Club',description:'Reach a 700 lb combined total',level:'easy',type:'total',target:700},
+  {id:'workouts-25',name:'Staying Consistent',description:'Complete 25 workouts',level:'medium',type:'workouts',target:25},
+  {id:'weekly-4',name:'Four-Day Focus',description:'Train on 4 distinct days in one week',level:'medium',type:'weeklyDays',target:4},
+  {id:'rotation-4',name:'Full Rotation',description:'Complete each of the four workout templates',level:'medium',type:'rotation',target:4},
+  {id:'ohp-135',name:'Strong Shoulders',description:'Standing OHP 135 lb',level:'medium',type:'lift',lift:'standing-ohp',target:135},
+  {id:'streak-6',name:'Six-Week Streak',description:'Train during 6 consecutive weeks',level:'medium',type:'streak',target:6},
+  {id:'total-800',name:'800 lb Club',description:'Reach an 800 lb combined total',level:'medium',type:'total',target:800},
+  {id:'workouts-48',name:'Program Finisher',description:'Complete 48 workouts',level:'hard',type:'workouts',target:48},
+  {id:'bench-225',name:'Elite Bench Club',description:'Bench 225 lb',level:'hard',type:'lift',lift:'bench-press',target:225},
+  {id:'squat-315',name:'Elite Squat Club',description:'Squat 315 lb',level:'hard',type:'lift',lift:'back-squat',target:315},
+  {id:'deadlift-405',name:'Elite Deadlift Club',description:'Deadlift 405 lb',level:'hard',type:'lift',lift:'deadlift',target:405},
+  {id:'ohp-185',name:'Elite Press Club',description:'Standing OHP 185 lb',level:'hard',type:'lift',lift:'standing-ohp',target:185},
+  {id:'volume-1000000',name:'Iron Millionaire',description:'Lift 1,000,000 lb in cumulative training volume',level:'hard',type:'volume',target:1000000},
+  {id:'total-900',name:'900 lb Club',description:'Reach a 900 lb combined total',level:'hard',type:'total',target:900},
+  {id:'workouts-100',name:'Year-Round Strength',description:'Complete 100 workouts',level:'veryHard',type:'workouts',target:100},
+  {id:'bench-315',name:'CEO of Bench Club',description:'Bench 315 lb',level:'veryHard',type:'lift',lift:'bench-press',target:315},
+  {id:'squat-405',name:'CEO of Squat Club',description:'Squat 405 lb',level:'veryHard',type:'lift',lift:'back-squat',target:405},
+  {id:'deadlift-495',name:'CEO of Deadlift Club',description:'Deadlift 495 lb',level:'veryHard',type:'lift',lift:'deadlift',target:495},
+  {id:'ohp-225',name:'CEO of Press Club',description:'Standing OHP 225 lb',level:'veryHard',type:'lift',lift:'standing-ohp',target:225},
+  {id:'total-1000',name:'1,000 lb Club',description:'Reach a 1,000 lb combined total',level:'veryHard',type:'total',target:1000},
+  {id:'total-1100',name:'1,100 lb Club',description:'Reach a 1,100 lb combined total',level:'veryHard',type:'total',target:1100}
 ];
 
 let raw=localStorage.getItem(STORE)||localStorage.getItem('seanStrengthTrackerV11')||localStorage.getItem('seanStrengthTrackerV10')||localStorage.getItem('seanStrengthTrackerV9')||localStorage.getItem('seanStrengthTrackerV8')||localStorage.getItem('seanStrengthTrackerV6_1')||localStorage.getItem('seanStrengthTrackerV6')||localStorage.getItem('seanStrengthTrackerV5')||localStorage.getItem('seanStrengthTrackerV4')||localStorage.getItem('seanStrengthTrackerV2')||localStorage.getItem('seanStrengthTrackerV1');
@@ -65,7 +142,8 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 function persist(){localStorage.setItem(STORE,JSON.stringify(state.data));}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
 function normalizeRewardData(){
-  state.data.coins=Math.max(0,Number(state.data.coins)||0);
+  const coins=Number(state.data.coins);
+  state.data.coins=Number.isFinite(coins)?coins:0;
   if(state.data.rewardVersion!==2){
     const previousThemes=Array.isArray(state.data.ownedThemes)?state.data.ownedThemes:[];
     state.data.ownedThemes=['light',...previousThemes.filter(theme=>theme==='forest')];
@@ -76,6 +154,19 @@ function normalizeRewardData(){
   state.data.ownedThemes=[...new Set(state.data.ownedThemes.filter(theme=>validThemes.has(theme)))];
   if(!state.data.ownedThemes.includes('light'))state.data.ownedThemes.push('light');
   if(!Array.isArray(state.data.redeemedCheatCodes))state.data.redeemedCheatCodes=[];
+  if(!Array.isArray(state.data.ownedStoreItems))state.data.ownedStoreItems=[];
+  const validStoreItems=new Set(STORE_EXTRAS.map(item=>item.id));
+  state.data.ownedStoreItems=[...new Set(state.data.ownedStoreItems.filter(id=>validStoreItems.has(id)))];
+  Object.values(DEFAULT_STORE_ITEMS).forEach(id=>{if(!state.data.ownedStoreItems.includes(id))state.data.ownedStoreItems.push(id)});
+  if(!state.data.activeStoreItems||typeof state.data.activeStoreItems!=='object')state.data.activeStoreItems={};
+  Object.entries(DEFAULT_STORE_ITEMS).forEach(([category,fallback])=>{
+    const active=state.data.activeStoreItems[category];
+    const item=STORE_EXTRAS.find(candidate=>candidate.id===active&&candidate.category===category);
+    state.data.activeStoreItems[category]=item&&state.data.ownedStoreItems.includes(active)?active:fallback;
+  });
+  if(!Array.isArray(state.data.unlockedAchievements))state.data.unlockedAchievements=[];
+  const validAchievements=new Set(ACHIEVEMENTS.map(achievement=>achievement.id));
+  state.data.unlockedAchievements=[...new Set(state.data.unlockedAchievements.filter(id=>validAchievements.has(id)))];
   if(state.data.activeTheme==='default')state.data.activeTheme='light';
   if(!state.data.activeTheme||!state.data.ownedThemes.includes(state.data.activeTheme))state.data.activeTheme='light';
 }
@@ -88,6 +179,43 @@ function applyTheme(theme){
   if(theme==='dark')document.body.classList.add('dark');
   if(!['light','dark'].includes(theme))document.body.classList.add(`theme-${theme}`);
   localStorage.setItem('strengthDark',String(theme==='dark'));
+}
+function activeStoreItem(category){
+  return STORE_EXTRAS.find(item=>item.id===state.data.activeStoreItems[category])||null;
+}
+function applyStoreCosmetics(){
+  STORE_EXTRAS.filter(item=>['timer','cards'].includes(item.category)).forEach(item=>document.body.classList.remove(`cosmetic-${item.id}`));
+  ['timer','cards'].forEach(category=>{
+    const id=state.data.activeStoreItems[category];
+    if(id&&id!==DEFAULT_STORE_ITEMS[category])document.body.classList.add(`cosmetic-${id}`);
+  });
+  renderProfileShowcase();
+}
+function renderProfileShowcase(){
+  const el=$('#profileShowcase');
+  if(!el)return;
+  const trophy=activeStoreItem('trophy');
+  const title=activeStoreItem('title');
+  const hasTrophy=trophy&&trophy.price>0;
+  const hasTitle=title&&title.price>0;
+  el.classList.toggle('hidden',!hasTrophy&&!hasTitle);
+  el.innerHTML=`${hasTrophy?`<span class="profile-trophy" title="${trophy.name}">${trophy.icon}</span>`:''}${hasTitle?`<strong>${title.name}</strong>`:''}`;
+}
+function showCompletionCelebration(){
+  const celebration=activeStoreItem('celebration');
+  if(!celebration||celebration.price===0)return;
+  document.querySelector('.completion-celebration')?.remove();
+  const overlay=document.createElement('div');
+  const symbols={
+    'celebration-confetti':['🎉','◆','●','★','■'],
+    'celebration-fireworks':['🎆','✨','🎇','✨','🎆'],
+    'celebration-lightning':['⚡','⚡','💪','⚡','⚡'],
+    'celebration-coins':['🪙','🪙','💰','🪙','🪙']
+  }[celebration.id]||[celebration.icon];
+  overlay.className=`completion-celebration ${celebration.id}`;
+  overlay.innerHTML=`<strong>Workout Complete!</strong>${symbols.map((symbol,index)=>`<span style="--i:${index}">${symbol}</span>`).join('')}`;
+  document.body.appendChild(overlay);
+  setTimeout(()=>overlay.remove(),2600);
 }
 
 function saveDraft(){
@@ -118,6 +246,7 @@ function showView(n){
   if(n==='history')renderHistory();
   if(n==='exercises')renderExerciseLibrary();
   if(n==='templates')renderTemplates();
+  if(n==='achievements')renderAchievements();
   if(n==='store')renderStore();
   if(n==='home')renderHome();
   scrollTo(0,0);
@@ -140,6 +269,103 @@ function exerciseById(id){return state.data.exercises.find(e=>e.id===id)||null}
 function workoutById(id){return state.data.workouts.find(w=>w.id===id)||null}
 function exerciseNameList(){return [...new Set(state.data.exercises.map(e=>e.name))]}
 function clampSets(v){return Math.max(1,Math.min(10,Number(v)||1))}
+
+function liftIdForEntry(entry){
+  if(['bench-press','back-squat','deadlift','standing-ohp'].includes(entry.exerciseId))return entry.exerciseId;
+  const names={'bench press':'bench-press','back squat':'back-squat',deadlift:'deadlift','standing ohp':'standing-ohp'};
+  return names[String(entry.name||'').trim().toLowerCase()]||null;
+}
+function workoutVolume(workout){
+  return (workout.exercises||[]).reduce((total,entry)=>{
+    const weight=Math.max(0,Number(entry.weight)||0);
+    const reps=(entry.reps||[]).reduce((sum,value)=>sum+Math.max(0,Number(value)||0),0);
+    return total+weight*reps;
+  },0);
+}
+function formatVolume(value){return `${Math.round(value).toLocaleString()} lb`}
+function mondayForDate(value){
+  if(!validDateString(value))return null;
+  const [year,month,day]=value.split('-').map(Number);
+  const date=new Date(Date.UTC(year,month-1,day));
+  const offset=(date.getUTCDay()+6)%7;
+  date.setUTCDate(date.getUTCDate()-offset);
+  return date.toISOString().slice(0,10);
+}
+function achievementStats(){
+  const history=Array.isArray(state.data.history)?state.data.history:[];
+  const liftWeights={'bench-press':0,'back-squat':0,deadlift:0,'standing-ohp':0};
+  const weeklyDates=new Map();
+  const completedTemplates=new Set();
+  let sets=0,volume=0;
+  history.forEach(workout=>{
+    const week=mondayForDate(workout.date);
+    if(week){
+      if(!weeklyDates.has(week))weeklyDates.set(week,new Set());
+      weeklyDates.get(week).add(workout.date);
+    }
+    const template=state.data.workouts.find(item=>item.id===workout.workoutId||item.name===workout.type)
+      ||DEFAULT_WORKOUTS.find(item=>item.name===workout.type);
+    if(template)completedTemplates.add(template.id);
+    (workout.exercises||[]).forEach(entry=>{
+      const lift=liftIdForEntry(entry);
+      const weight=Number(entry.weight)||0;
+      const completedReps=(entry.reps||[]).filter(reps=>Number(reps)>0);
+      sets+=completedReps.length;
+      volume+=Math.max(0,weight)*completedReps.reduce((total,reps)=>total+Number(reps),0);
+      if(lift&&weight>0&&completedReps.length)liftWeights[lift]=Math.max(liftWeights[lift],weight);
+    });
+  });
+  const weeks=[...weeklyDates.keys()].sort();
+  let streak=0,currentStreak=0,previous=null;
+  weeks.forEach(week=>{
+    const time=new Date(week+'T00:00:00Z').getTime();
+    currentStreak=previous!==null&&time-previous===7*86400000?currentStreak+1:1;
+    streak=Math.max(streak,currentStreak);
+    previous=time;
+  });
+  return{
+    workouts:history.length,
+    weeklyDays:Math.max(0,...[...weeklyDates.values()].map(dates=>dates.size)),
+    liftWeights,
+    sets,
+    volume,
+    rotation:completedTemplates.size,
+    streak,
+    total:liftWeights['bench-press']+liftWeights['back-squat']+liftWeights.deadlift
+  };
+}
+function achievementValue(achievement,stats){
+  if(achievement.type==='workouts')return stats.workouts;
+  if(achievement.type==='weeklyDays')return stats.weeklyDays;
+  if(achievement.type==='lift')return stats.liftWeights[achievement.lift]||0;
+  if(achievement.type==='sets')return stats.sets;
+  if(achievement.type==='volume')return stats.volume;
+  if(achievement.type==='rotation')return stats.rotation;
+  if(achievement.type==='streak')return stats.streak;
+  return stats.total;
+}
+function achievementProgressText(achievement,value){
+  if(achievement.type==='workouts')return `${Math.min(value,achievement.target)} / ${achievement.target} workouts`;
+  if(achievement.type==='weeklyDays')return `${Math.min(value,achievement.target)} / ${achievement.target} days`;
+  if(achievement.type==='sets')return `${Math.min(value,achievement.target)} / ${achievement.target} sets`;
+  if(achievement.type==='volume')return `${formatVolume(Math.min(value,achievement.target))} / ${formatVolume(achievement.target)}`;
+  if(achievement.type==='rotation')return `${Math.min(value,achievement.target)} / ${achievement.target} templates`;
+  if(achievement.type==='streak')return `${Math.min(value,achievement.target)} / ${achievement.target} weeks`;
+  return `${Math.min(value,achievement.target)} / ${achievement.target} lb`;
+}
+function revokeInvalidAchievements(){
+  const stats=achievementStats();
+  const revoked=[];
+  state.data.unlockedAchievements=state.data.unlockedAchievements.filter(id=>{
+    const achievement=ACHIEVEMENTS.find(item=>item.id===id);
+    const valid=achievement&&achievementValue(achievement,stats)>=achievement.target;
+    if(achievement&&!valid)revoked.push(achievement);
+    return valid;
+  });
+  const coins=revoked.reduce((total,achievement)=>total+ACHIEVEMENT_LEVELS[achievement.level].coins,0);
+  state.data.coins-=coins;
+  return{revoked,coins};
+}
 
 function renderHome(){
   const week=currentProgramWeek();
@@ -304,6 +530,7 @@ function saveWorkout(){
     const ex=exerciseById(exerciseId);
     const card=$(`.exercise-card[data-idx="${idx}"]`);
     return{
+      exerciseId,
       name:ex.name,
       weight:Number(card.querySelector('.weight-input').value)||0,
       reps:[...card.querySelectorAll('.set-cell input')].map(i=>Number(i.value)||0)
@@ -311,7 +538,7 @@ function saveWorkout(){
   })||[];
   if(exercises.some(e=>e.reps.some(r=>r===0))){toast('Enter reps for every set');return}
   const coinsAwarded=durationMs>REWARD_DURATION_MS?WORKOUT_REWARD:0;
-  state.data.history.push({id:Date.now(),date,type:workout.name,programWeek:1,durationMs,coinsAwarded,exercises});
+  state.data.history.push({id:Date.now(),date,type:workout.name,workoutId:workout.id,programWeek:1,durationMs,coinsAwarded,exercises});
   state.data.coins+=coinsAwarded;
   recalculateProgramWeeks();
   const savedWorkout=state.data.history[state.data.history.length-1];
@@ -322,14 +549,18 @@ function saveWorkout(){
   workoutDurationStart=null;
   toast(coinsAwarded?`Workout saved · +${coinsAwarded} coins`:`Workout saved · ${weekLabel(savedWorkout.programWeek)}`);
   showView('history');
+  showCompletionCelebration();
 }
 
 function renderHistory(){
   const el=$('#historyList');
   if(!el)return;
+  const totalVolume=(state.data.history||[]).reduce((total,workout)=>total+workoutVolume(workout),0);
+  const volumeSummary=$('#historyVolumeSummary');
+  if(volumeSummary)volumeSummary.innerHTML=`<span>Lifetime working-weight volume</span><strong>${formatVolume(totalVolume)}</strong>`;
   el.innerHTML=state.data.history.length?state.data.history.slice().reverse().map(w=>{
     const timeText=typeof w.durationMs==='number'&&w.durationMs>0?formatDuration(w.durationMs):'--';
-    return`<details class="card history-item"><summary><div class="history-summary-row"><div class="history-left"><strong class="history-workout-name">${w.type}</strong><span class="history-time" style="display:inline-block;margin-left:18px;min-width:64px;">${timeText}</span></div><div class="history-right"><span class="history-date">${w.date}${[6,12].includes(Number(w.programWeek))?' (Deload)':''}</span><button class="trash-btn" data-delete-id="${w.id}" aria-label="Delete ${w.type} on ${w.date}" title="Delete workout">🗑</button></div></div></summary><div class="history-details">${w.exercises.map(e=>{const best=Math.max(...e.reps.map(r=>e1rm(e.weight,r)));return`<div class="history-exercise"><strong>${e.name}</strong><span>${e.weight||'Bodyweight'}${e.weight?' lb':''}</span><small>Reps: ${e.reps.join(' / ')}${best?' · e1RM '+best:''}</small></div>`}).join('')}</div></details>`;
+    return`<details class="card history-item"><summary><div class="history-summary-row"><div class="history-left"><strong class="history-workout-name">${w.type}</strong><span class="history-time" style="display:inline-block;margin-left:18px;min-width:64px;">${timeText}</span><small class="history-volume">${formatVolume(workoutVolume(w))} volume</small></div><div class="history-right"><span class="history-date">${w.date}${[6,12].includes(Number(w.programWeek))?' (Deload)':''}</span><button class="trash-btn" data-delete-id="${w.id}" aria-label="Delete ${w.type} on ${w.date}" title="Delete workout">🗑</button></div></div></summary><div class="history-details">${w.exercises.map(e=>{const best=Math.max(...e.reps.map(r=>e1rm(e.weight,r)));return`<div class="history-exercise"><strong>${e.name}</strong><span>${e.weight||'Bodyweight'}${e.weight?' lb':''}</span><small>Reps: ${e.reps.join(' / ')}${best?' · e1RM '+best:''}</small></div>`}).join('')}</div></details>`;
   }).join(''):'<div class="card"><h3>No workouts saved yet</h3><p>Complete a workout and it will appear here.</p></div>';
   el.querySelectorAll('.trash-btn').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();deleteWorkout(Number(button.dataset.deleteId))}));
   renderExerciseSelect();
@@ -340,11 +571,18 @@ function deleteWorkout(id){
   if(!workout)return;
   if(!confirm(`Delete ${workout.type} from ${workout.date}?`))return;
   state.data.history=state.data.history.filter(item=>Number(item.id)!==Number(id));
+  const workoutCoins=Math.max(0,Number(workout.coinsAwarded)||0);
+  state.data.coins-=workoutCoins;
   recalculateProgramWeeks();
+  const achievementRevocation=revokeInvalidAchievements();
+  const removedCoins=workoutCoins+achievementRevocation.coins;
   persist();
   renderHome();
   renderHistory();
-  toast('Workout deleted');
+  renderCoinBalance();
+  renderAchievements();
+  const revokedCount=achievementRevocation.revoked.length;
+  toast(`Workout deleted${revokedCount?` · ${revokedCount} achievement${revokedCount===1?'':'s'} revoked`:''}${removedCoins?` · -${removedCoins} coins`:''}`);
 }
 
 function renderExerciseSelect(){
@@ -472,18 +710,68 @@ function moveExerciseInTemplate(templateId,index,direction){
   renderHome();
 }
 
+function claimAchievementRewards(ids){
+  const requested=new Set(ids);
+  const stats=achievementStats();
+  const unlocked=new Set(state.data.unlockedAchievements);
+  const claimed=ACHIEVEMENTS.filter(achievement=>requested.has(achievement.id)&&!unlocked.has(achievement.id)&&achievementValue(achievement,stats)>=achievement.target);
+  if(!claimed.length){toast('No achievement rewards available');return}
+  const coins=claimed.reduce((total,achievement)=>total+ACHIEVEMENT_LEVELS[achievement.level].coins,0);
+  state.data.unlockedAchievements.push(...claimed.map(achievement=>achievement.id));
+  state.data.coins+=coins;
+  persist();
+  renderCoinBalance();
+  renderAchievements();
+  toast(`${claimed.length===1?claimed[0].name:`${claimed.length} achievements`} claimed · +${coins} coins`);
+}
+
+function renderAchievements(){
+  const el=$('#achievementList');
+  if(!el)return;
+  const stats=achievementStats();
+  const unlocked=new Set(state.data.unlockedAchievements);
+  const completed=ACHIEVEMENTS.filter(achievement=>achievementValue(achievement,stats)>=achievement.target);
+  const available=completed.filter(achievement=>!unlocked.has(achievement.id));
+  $('#achievementSummary').innerHTML=`<div><strong>${completed.length} of ${ACHIEVEMENTS.length}</strong><span>achievements completed · ${unlocked.size} claimed</span></div>${available.length?`<button id="claimAllAchievements" class="primary" type="button">Claim all (${available.length})</button>`:''}`;
+  el.innerHTML=Object.entries(ACHIEVEMENT_LEVELS).map(([level,details])=>{
+    const cards=ACHIEVEMENTS.filter(achievement=>achievement.level===level).map(achievement=>{
+      const claimed=unlocked.has(achievement.id);
+      const value=achievementValue(achievement,stats);
+      const complete=value>=achievement.target;
+      const percent=complete?100:Math.min(100,Math.round(value/achievement.target*100));
+      const reward=complete&&!claimed?`<button class="primary achievement-claim" data-claim-achievement="${achievement.id}" type="button">Claim +${details.coins}</button>`:`<strong class="achievement-reward">+${details.coins}</strong>`;
+      return`<article class="achievement-card ${claimed?'unlocked':complete?'claimable':'locked'}"><div class="achievement-icon" aria-hidden="true">${claimed?'✓':complete?'!':'◇'}</div><div class="achievement-info"><div class="achievement-title"><h3>${achievement.name}</h3><span class="difficulty ${level}">${details.label}</span></div><p>${achievement.description}</p><div class="achievement-progress"><span style="width:${percent}%"></span></div><small>${claimed?'Claimed':complete?'Completed · reward ready':achievementProgressText(achievement,value)}</small></div>${reward}</article>`;
+    }).join('');
+    return`<section class="achievement-tier"><h2>${details.label}<span>${details.coins} coins each</span></h2>${cards}</section>`;
+  }).join('');
+  $('#claimAllAchievements')?.addEventListener('click',()=>claimAchievementRewards(available.map(achievement=>achievement.id)));
+  el.querySelectorAll('[data-claim-achievement]').forEach(button=>button.addEventListener('click',()=>claimAchievementRewards([button.dataset.claimAchievement])));
+}
+
 function renderStore(){
   renderCoinBalance();
   const el=$('#storeItems');
   if(!el)return;
-  el.innerHTML=STORE_THEMES.map(theme=>{
+  const themeCards=STORE_THEMES.map(theme=>{
     const owned=state.data.ownedThemes.includes(theme.id);
     const active=state.data.activeTheme===theme.id;
     const disabled=active||(!owned&&state.data.coins<theme.price);
     const label=active?'Active':owned?'Use theme':`Buy for ${theme.price} coins`;
     return`<article class="store-item"><div class="theme-preview theme-preview-${theme.id}"><span></span><span></span><span></span></div><div><h3>${theme.name}</h3><p>${theme.description}</p></div><button class="${owned?'secondary':'primary'}" data-theme-id="${theme.id}"${disabled?' disabled':''}>${label}</button></article>`;
   }).join('');
+  const extraSections=Object.entries(STORE_CATEGORIES).map(([category,details])=>{
+    const cards=STORE_EXTRAS.filter(item=>item.category===category).map(item=>{
+      const owned=state.data.ownedStoreItems.includes(item.id);
+      const active=state.data.activeStoreItems[category]===item.id;
+      const disabled=active||(!owned&&state.data.coins<item.price);
+      const label=active?'Active':owned?'Use item':`Buy for ${item.price} coins`;
+      return`<article class="store-item cosmetic-store-item"><div class="cosmetic-preview preview-${item.id}">${item.icon}</div><div><h3>${item.name}</h3><p>${item.description}</p></div><button class="${owned?'secondary':'primary'}" data-store-item-id="${item.id}"${disabled?' disabled':''}>${label}</button></article>`;
+    }).join('');
+    return`<section class="store-category"><div class="store-category-heading"><h2>${details.label}</h2><p>${details.description}</p></div>${cards}</section>`;
+  }).join('');
+  el.innerHTML=`<section class="store-category"><div class="store-category-heading"><h2>Themes</h2><p>Change the complete color palette of the app.</p></div>${themeCards}</section>${extraSections}`;
   el.querySelectorAll('[data-theme-id]').forEach(button=>button.onclick=()=>buyOrActivateTheme(button.dataset.themeId));
+  el.querySelectorAll('[data-store-item-id]').forEach(button=>button.onclick=()=>buyOrActivateStoreItem(button.dataset.storeItemId));
 }
 
 function buyOrActivateTheme(id){
@@ -499,6 +787,20 @@ function buyOrActivateTheme(id){
   persist();
   renderStore();
   toast(`${theme.name} theme active`);
+}
+function buyOrActivateStoreItem(id){
+  const item=STORE_EXTRAS.find(candidate=>candidate.id===id);
+  if(!item)return;
+  if(!state.data.ownedStoreItems.includes(id)){
+    if(state.data.coins<item.price){toast('Not enough coins');return}
+    state.data.coins-=item.price;
+    state.data.ownedStoreItems.push(id);
+  }
+  state.data.activeStoreItems[item.category]=id;
+  applyStoreCosmetics();
+  persist();
+  renderStore();
+  toast(`${item.name} active`);
 }
 
 function redeemCheatCode(){
@@ -521,13 +823,18 @@ function redeemCheatCode(){
 
 function resetThemePurchases(){
   const purchasedThemes=STORE_THEMES.filter(theme=>theme.price>0&&state.data.ownedThemes.includes(theme.id));
-  if(!purchasedThemes.length){toast('No purchases to reset');return}
-  const refund=purchasedThemes.reduce((total,theme)=>total+theme.price,0);
-  if(!confirm(`Reset ${purchasedThemes.length} theme purchase${purchasedThemes.length===1?'':'s'} and refund ${refund} coins?`))return;
+  const purchasedItems=STORE_EXTRAS.filter(item=>item.price>0&&state.data.ownedStoreItems.includes(item.id));
+  const purchaseCount=purchasedThemes.length+purchasedItems.length;
+  if(!purchaseCount){toast('No purchases to reset');return}
+  const refund=[...purchasedThemes,...purchasedItems].reduce((total,item)=>total+item.price,0);
+  if(!confirm(`Reset ${purchaseCount} purchase${purchaseCount===1?'':'s'} and refund ${refund} coins?`))return;
   state.data.coins+=refund;
   state.data.ownedThemes=['light'];
   state.data.activeTheme='light';
+  state.data.ownedStoreItems=Object.values(DEFAULT_STORE_ITEMS);
+  state.data.activeStoreItems={...DEFAULT_STORE_ITEMS};
   applyTheme('light');
+  applyStoreCosmetics();
   persist();
   renderStore();
   toast(`Purchases reset · +${refund} coins`);
@@ -587,12 +894,15 @@ function importData(file){
       if(!state.data.workouts)state.data.workouts=DEFAULT_WORKOUTS.slice();
       normalizeRewardData();
       applyTheme(state.data.activeTheme);
+      applyStoreCosmetics();
       recalculateProgramWeeks();
       persist();
       renderHome();
       renderHistory();
       renderExerciseLibrary();
       renderTemplates();
+      renderAchievements();
+      renderStore();
       toast('Backup imported')
     }catch{
       toast('That backup file is invalid')
@@ -603,6 +913,7 @@ function importData(file){
 
 function init(){
   applyTheme(state.data.activeTheme);
+  applyStoreCosmetics();
 
   $$('.bottom-nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
   $$('[data-go="home"]').forEach(b=>b.onclick=()=>{stopWorkoutTimer();resetRestTimer();showView('home')});
@@ -629,6 +940,7 @@ function init(){
   renderHome();
   renderExerciseLibrary();
   renderTemplates();
+  renderAchievements();
   renderStore();
 
   if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js');
