@@ -33,12 +33,29 @@ const DEFAULT_WORKOUTS=[
 ];
 const STORE='seanStrengthTrackerV12';
 const DRAFT_STORE='seanStrengthTrackerDraftV4';
+const WORKOUT_REWARD=5;
+const REWARD_DURATION_MS=45*60*1000;
+const STORE_THEMES=[
+  {id:'light',name:'Light',price:0,description:'The original clean, bright theme.'},
+  {id:'dark',name:'Dark',price:10,description:'A low-light theme for evening workouts.'},
+  {id:'forest',name:'Forest',price:20,description:'A deep green theme inspired by the outdoors.'},
+  {id:'america',name:'America',price:30,description:'Bold red, white, and blue from sea to shining sea.'},
+  {id:'love',name:'Love',price:40,description:'Warm blush tones with plenty of heart.'},
+  {id:'hero',name:'Comic Hero',price:50,description:'Punchy primary colors straight from a comic panel.'},
+  {id:'ocean',name:'Ocean',price:60,description:'Cool blues and seafoam for a calm training flow.'},
+  {id:'neon',name:'Neon Night',price:70,description:'Electric color on a midnight backdrop.'},
+  {id:'poop',name:'Poop',price:80,description:'Earthy brown, golden tan, and absolutely no shame.'},
+  {id:'jurassic',name:'Jurassic Park',price:90,description:'Primeval jungle greens, amber, and volcanic red.'},
+  {id:'poozer',name:'Poozer',price:100,description:'The legendary purple-and-gold final form.'},
+  {id:'kawaii',name:'Kawaii Kitties',price:5000,description:'Pastel colors with an original parade of cartoon cats.'}
+];
 
 let raw=localStorage.getItem(STORE)||localStorage.getItem('seanStrengthTrackerV11')||localStorage.getItem('seanStrengthTrackerV10')||localStorage.getItem('seanStrengthTrackerV9')||localStorage.getItem('seanStrengthTrackerV8')||localStorage.getItem('seanStrengthTrackerV6_1')||localStorage.getItem('seanStrengthTrackerV6')||localStorage.getItem('seanStrengthTrackerV5')||localStorage.getItem('seanStrengthTrackerV4')||localStorage.getItem('seanStrengthTrackerV2')||localStorage.getItem('seanStrengthTrackerV1');
 const parsed=raw?JSON.parse(raw):null;
-const state={selected:null,data:parsed&&parsed.exercises&&parsed.workouts?parsed:{history:parsed?.history||[],startDate:null,exercises:DEFAULT_EXERCISES.slice(),workouts:DEFAULT_WORKOUTS.slice()}};
+const state={selected:null,data:parsed&&parsed.exercises&&parsed.workouts?parsed:{history:parsed?.history||[],exercises:DEFAULT_EXERCISES.slice(),workouts:DEFAULT_WORKOUTS.slice()}};
 if(!state.data.exercises)state.data.exercises=DEFAULT_EXERCISES.slice();
 if(!state.data.workouts)state.data.workouts=DEFAULT_WORKOUTS.slice();
+normalizeRewardData();
 
 let workoutTimerInterval=null,workoutStartTime=null,restTimerInterval=null,restStartTime=null,restElapsedBeforePause=0,restRunning=false;
 let workoutDurationStart=null;
@@ -47,6 +64,31 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 
 function persist(){localStorage.setItem(STORE,JSON.stringify(state.data));}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
+function normalizeRewardData(){
+  state.data.coins=Math.max(0,Number(state.data.coins)||0);
+  if(state.data.rewardVersion!==2){
+    const previousThemes=Array.isArray(state.data.ownedThemes)?state.data.ownedThemes:[];
+    state.data.ownedThemes=['light',...previousThemes.filter(theme=>theme==='forest')];
+    state.data.rewardVersion=2;
+  }
+  if(!Array.isArray(state.data.ownedThemes))state.data.ownedThemes=['light'];
+  const validThemes=new Set(STORE_THEMES.map(theme=>theme.id));
+  state.data.ownedThemes=[...new Set(state.data.ownedThemes.filter(theme=>validThemes.has(theme)))];
+  if(!state.data.ownedThemes.includes('light'))state.data.ownedThemes.push('light');
+  if(!Array.isArray(state.data.redeemedCheatCodes))state.data.redeemedCheatCodes=[];
+  if(state.data.activeTheme==='default')state.data.activeTheme='light';
+  if(!state.data.activeTheme||!state.data.ownedThemes.includes(state.data.activeTheme))state.data.activeTheme='light';
+}
+function renderCoinBalance(){
+  const element=$('#storeCoinBalance');
+  if(element)element.textContent=state.data.coins;
+}
+function applyTheme(theme){
+  document.body.classList.remove('dark',...STORE_THEMES.map(item=>`theme-${item.id}`));
+  if(theme==='dark')document.body.classList.add('dark');
+  if(!['light','dark'].includes(theme))document.body.classList.add(`theme-${theme}`);
+  localStorage.setItem('strengthDark',String(theme==='dark'));
+}
 
 function saveDraft(){
   if(state.selected===null)return;
@@ -76,6 +118,7 @@ function showView(n){
   if(n==='history')renderHistory();
   if(n==='exercises')renderExerciseLibrary();
   if(n==='templates')renderTemplates();
+  if(n==='store')renderStore();
   if(n==='home')renderHome();
   scrollTo(0,0);
 }
@@ -138,7 +181,6 @@ function startWorkoutFromHome(workoutId){
 function openWorkout(workoutId){
   const workout=workoutById(workoutId)||state.data.workouts[0];
   if(!workout)return;
-  document.body.classList.add('workout-mode');
   state.selected=workout.id;
   $('#workoutTitle').textContent=workout.name;
   $('#workoutDate').value=new Date().toISOString().slice(0,10);
@@ -153,7 +195,6 @@ function resumeDraftWorkout(){
   if(!draft)return;
   const workout=workoutById(draft.selected)||state.data.workouts[0];
   if(!workout)return;
-  document.body.classList.add('workout-mode');
   state.selected=workout.id;
   $('#workoutTitle').textContent=workout.name;
   renderWorkoutEditor(workout);
@@ -194,7 +235,6 @@ function renderWorkoutEditor(workout){
     }));
     card.querySelectorAll('.set-cell input').forEach(i=>i.addEventListener('input',()=>{saveDraft();updateRecommendation(card,ex)}));
   });
-  bindWorkoutTemplateButtons(workout);
   if(loadDraft()?.selected===state.selected)restoreDraftIntoRenderedWorkout();
 }
 
@@ -266,12 +306,13 @@ function saveWorkout(){
     return{
       name:ex.name,
       weight:Number(card.querySelector('.weight-input').value)||0,
-      reps:[...card.querySelectorAll('.set-cell input')].map(i=>Number(i.value)||0),
-      goal:`${ex.defaultSets} x ${ex.reps||0}`
+      reps:[...card.querySelectorAll('.set-cell input')].map(i=>Number(i.value)||0)
     };
   })||[];
   if(exercises.some(e=>e.reps.some(r=>r===0))){toast('Enter reps for every set');return}
-  state.data.history.push({id:Date.now(),date,type:workout.name,programWeek:1,durationMs,exercises});
+  const coinsAwarded=durationMs>REWARD_DURATION_MS?WORKOUT_REWARD:0;
+  state.data.history.push({id:Date.now(),date,type:workout.name,programWeek:1,durationMs,coinsAwarded,exercises});
+  state.data.coins+=coinsAwarded;
   recalculateProgramWeeks();
   const savedWorkout=state.data.history[state.data.history.length-1];
   persist();
@@ -279,9 +320,7 @@ function saveWorkout(){
   stopWorkoutTimer();
   resetRestTimer();
   workoutDurationStart=null;
-  document.body.classList.remove('workout-mode');
-  renderHome();
-  toast(`Workout saved · ${weekLabel(savedWorkout.programWeek)}`);
+  toast(coinsAwarded?`Workout saved · +${coinsAwarded} coins`:`Workout saved · ${weekLabel(savedWorkout.programWeek)}`);
   showView('history');
 }
 
@@ -342,6 +381,13 @@ function addExercise(){
   renderExerciseLibrary();
   renderExerciseSelect();
   renderHome();
+  requestAnimationFrame(()=>{
+    const card=$(`.exercise-item[data-id="${id}"]`);
+    const nameInput=card?.querySelector('[data-field="name"]');
+    nameInput?.focus({preventScroll:true});
+    nameInput?.select();
+    card?.scrollIntoView({behavior:'smooth',block:'center'});
+  });
 }
 
 function saveExercise(id){
@@ -426,7 +472,66 @@ function moveExerciseInTemplate(templateId,index,direction){
   renderHome();
 }
 
-function bindWorkoutTemplateButtons(workout){}
+function renderStore(){
+  renderCoinBalance();
+  const el=$('#storeItems');
+  if(!el)return;
+  el.innerHTML=STORE_THEMES.map(theme=>{
+    const owned=state.data.ownedThemes.includes(theme.id);
+    const active=state.data.activeTheme===theme.id;
+    const disabled=active||(!owned&&state.data.coins<theme.price);
+    const label=active?'Active':owned?'Use theme':`Buy for ${theme.price} coins`;
+    return`<article class="store-item"><div class="theme-preview theme-preview-${theme.id}"><span></span><span></span><span></span></div><div><h3>${theme.name}</h3><p>${theme.description}</p></div><button class="${owned?'secondary':'primary'}" data-theme-id="${theme.id}"${disabled?' disabled':''}>${label}</button></article>`;
+  }).join('');
+  el.querySelectorAll('[data-theme-id]').forEach(button=>button.onclick=()=>buyOrActivateTheme(button.dataset.themeId));
+}
+
+function buyOrActivateTheme(id){
+  const theme=STORE_THEMES.find(item=>item.id===id);
+  if(!theme)return;
+  if(!state.data.ownedThemes.includes(id)){
+    if(state.data.coins<theme.price){toast('Not enough coins');return}
+    state.data.coins-=theme.price;
+    state.data.ownedThemes.push(id);
+  }
+  state.data.activeTheme=id;
+  applyTheme(id);
+  persist();
+  renderStore();
+  toast(`${theme.name} theme active`);
+}
+
+function redeemCheatCode(){
+  const input=$('#cheatCodeInput');
+  const code=input.value.trim();
+  const rewards={
+    Ronald:{coins:6969,message:'+6969 coins'},
+    'Nick is a poozer':{coins:30,message:'Thanks for beta testing'}
+  };
+  const reward=rewards[code];
+  if(!reward){toast('Invalid cheat code');return}
+  if(state.data.redeemedCheatCodes.includes(code)){toast('Cheat code already redeemed');return}
+  state.data.coins+=reward.coins;
+  state.data.redeemedCheatCodes.push(code);
+  input.value='';
+  persist();
+  renderStore();
+  toast(reward.message);
+}
+
+function resetThemePurchases(){
+  const purchasedThemes=STORE_THEMES.filter(theme=>theme.price>0&&state.data.ownedThemes.includes(theme.id));
+  if(!purchasedThemes.length){toast('No purchases to reset');return}
+  const refund=purchasedThemes.reduce((total,theme)=>total+theme.price,0);
+  if(!confirm(`Reset ${purchasedThemes.length} theme purchase${purchasedThemes.length===1?'':'s'} and refund ${refund} coins?`))return;
+  state.data.coins+=refund;
+  state.data.ownedThemes=['light'];
+  state.data.activeTheme='light';
+  applyTheme('light');
+  persist();
+  renderStore();
+  toast(`Purchases reset · +${refund} coins`);
+}
 
 function drawChart(entries){
   const canvas=$('#progressChart');
@@ -480,6 +585,8 @@ function importData(file){
       state.data=JSON.parse(r.result);
       if(!state.data.exercises)state.data.exercises=DEFAULT_EXERCISES.slice();
       if(!state.data.workouts)state.data.workouts=DEFAULT_WORKOUTS.slice();
+      normalizeRewardData();
+      applyTheme(state.data.activeTheme);
       recalculateProgramWeeks();
       persist();
       renderHome();
@@ -493,1492 +600,9 @@ function importData(file){
   };
   r.readAsText(file)
 }
-
-function updateHomeDraftCard(){
-  const area=$('#draftResumeArea');
-  if(!area)return;
-  const draft=loadDraft();
-  if(draft&&draft.selected!==null){
-    const workout=workoutById(draft.selected);
-    area.classList.remove('hidden');
-    area.innerHTML=`<div class="draft-resume-card"><div><strong>Workout in progress</strong><small>${workout?workout.name:'Draft workout'}${draft.date?' · '+draft.date:''}</small></div><div class="resume-actions"><button id="continueDraftFromHomeBtn" type="button" class="secondary">Continue workout</button><button id="discardDraftBtn" type="button" class="discard-btn">Discard</button></div></div>`;
-    $('#continueDraftFromHomeBtn').onclick=()=>resumeDraftWorkout();
-    $('#discardDraftBtn').onclick=()=>discardDraftWorkout();
-  }else{
-    area.classList.add('hidden');
-    area.innerHTML='';
-  }
-}
-
-function startWorkoutFromHome(workoutId){
-  if(isDraftInProgress()){
-    toast('Workout in progress.');
-    return;
-  }
-  openWorkout(workoutId);
-}
-
-function resumeDraftWorkout(){
-  const draft=loadDraft();
-  if(!draft)return;
-  const workout=workoutById(draft.selected)||state.data.workouts[0];
-  if(!workout)return;
-  document.body.classList.add('workout-mode');
-  state.selected=workout.id;
-  const title=$('#workoutTitle');
-  if(title)title.textContent=workout.name;
-  renderWorkoutEditor(workout);
-  const dateInput=$('#workoutDate');
-  if(dateInput)dateInput.value=draft.date||new Date().toISOString().slice(0,10);
-  startWorkoutTimerFromDraft(draft);
-  showView('workout');
-}
-
-function discardDraftWorkout(){
-  clearDraft();
-  stopWorkoutTimer();
-  resetRestTimer();
-  workoutDurationStart=null;
-  state.selected=null;
-  renderHome();
-  toast('Draft workout discarded');
-}
-
-function restoreDraftIntoRenderedWorkout(){
-  const draft=loadDraft();
-  if(!draft||draft.selected!==state.selected)return;
-  [...document.querySelectorAll('.exercise-card')].forEach(card=>{
-    const draftItem=draft.exercises.find(x=>x.idx===Number(card.dataset.idx));
-    if(!draftItem)return;
-    const weight=card.querySelector('.weight-input');
-    if(weight)weight.value=draftItem.weight||'';
-    [...card.querySelectorAll('.set-cell input')].forEach((input,i)=>{input.value=draftItem.sets?.[i]||''});
-  });
-  const dateInput=$('#workoutDate');
-  if(draft.date&&dateInput)dateInput.value=draft.date;
-}
-
-function updateWorkoutTimerDisplay(){
-  if(!workoutStartTime)return;
-  const el=$('#workoutElapsed');
-  if(el)el.textContent=formatDuration(Date.now()-workoutStartTime);
-}
-function startWorkoutTimerFresh(){
-  workoutStartTime=Date.now();
-  workoutDurationStart=workoutStartTime;
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=setInterval(updateWorkoutTimerDisplay,1000);
-  updateWorkoutTimerDisplay();
-  saveDraft();
-}
-function startWorkoutTimerFromDraft(draft){
-  workoutStartTime=draft.workoutStartTime||Date.now();
-  workoutDurationStart=draft.workoutDurationStart||workoutStartTime;
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=setInterval(updateWorkoutTimerDisplay,1000);
-  updateWorkoutTimerDisplay();
-  saveDraft();
-}
-function stopWorkoutTimer(){
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=null;
-  workoutStartTime=null;
-  const el=$('#workoutElapsed');
-  if(el)el.textContent='00:00';
-}
-
-function updateRestControls(){const btn=$('#restStartBtn');if(!btn)return;btn.textContent=restRunning?'Stop':'Start';btn.classList.toggle('stop',restRunning);btn.classList.toggle('start',!restRunning)}
-function updateRestDisplay(){const elapsed=restElapsedBeforePause+(restRunning?Date.now()-restStartTime:0);const el=$('#restElapsed');if(el)el.textContent=formatDuration(elapsed);updateRestControls()}
-function startRestTimer(){if(restRunning){stopRestTimer();return}restRunning=true;restStartTime=Date.now();clearInterval(restTimerInterval);restTimerInterval=setInterval(updateRestDisplay,1000);updateRestDisplay()}
-function stopRestTimer(){if(!restRunning)return;restElapsedBeforePause+=Date.now()-restStartTime;restRunning=false;clearInterval(restTimerInterval);restTimerInterval=null;updateRestDisplay()}
-function resetRestTimer(){clearInterval(restTimerInterval);restTimerInterval=null;restRunning=false;restStartTime=null;restElapsedBeforePause=0;const el=$('#restElapsed');if(el)el.textContent='00:00';updateRestControls()}
-
-function saveWorkout(){
-  const date=$('#workoutDate').value;
-  if(!validDateString(date)){toast('Choose a valid workout date');return}
-  const workout=workoutById(state.selected);
-  const durationMs=workoutDurationStart?Date.now()-workoutDurationStart:null;
-  const exercises=workout?.exerciseIds.map((exerciseId,idx)=>{
-    const ex=exerciseById(exerciseId);
-    const card=$(`.exercise-card[data-idx="${idx}"]`);
-    return{
-      name:ex.name,
-      weight:Number(card.querySelector('.weight-input').value)||0,
-      reps:[...card.querySelectorAll('.set-cell input')].map(i=>Number(i.value)||0),
-      goal:`${ex.defaultSets} x ${ex.reps||0}`
-    };
-  })||[];
-  if(exercises.some(e=>e.reps.some(r=>r===0))){toast('Enter reps for every set');return}
-  state.data.history.push({id:Date.now(),date,type:workout.name,programWeek:1,durationMs,exercises});
-  recalculateProgramWeeks();
-  const savedWorkout=state.data.history[state.data.history.length-1];
-  persist();
-  clearDraft();
-  stopWorkoutTimer();
-  resetRestTimer();
-  workoutDurationStart=null;
-  document.body.classList.remove('workout-mode');
-  renderHome();
-  toast(`Workout saved · ${weekLabel(savedWorkout.programWeek)}`);
-  showView('history');
-}
-
-function renderHistory(){
-  const el=$('#historyList');
-  if(!el)return;
-  el.innerHTML=state.data.history.length?state.data.history.slice().reverse().map(w=>{
-    const timeText=typeof w.durationMs==='number'&&w.durationMs>0?formatDuration(w.durationMs):'--';
-    return`<details class="card history-item"><summary><div class="history-summary-row"><div class="history-left"><strong class="history-workout-name">${w.type}</strong><span class="history-time" style="display:inline-block;margin-left:18px;min-width:64px;">${timeText}</span></div><div class="history-right"><span class="history-date">${w.date}${[6,12].includes(Number(w.programWeek))?' (Deload)':''}</span><button class="trash-btn" data-delete-id="${w.id}" aria-label="Delete ${w.type} on ${w.date}" title="Delete workout">🗑</button></div></div></summary><div class="history-details">${w.exercises.map(e=>{const best=Math.max(...e.reps.map(r=>e1rm(e.weight,r)));return`<div class="history-exercise"><strong>${e.name}</strong><span>${e.weight||'Bodyweight'}${e.weight?' lb':''}</span><small>Reps: ${e.reps.join(' / ')}${best?' · e1RM '+best:''}</small></div>`}).join('')}</div></details>`;
-  }).join(''):'<div class="card"><h3>No workouts saved yet</h3><p>Complete a workout and it will appear here.</p></div>';
-  el.querySelectorAll('.trash-btn').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();deleteWorkout(Number(button.dataset.deleteId))}));
-  renderExerciseSelect();
-}
-
-function deleteWorkout(id){
-  const workout=state.data.history.find(item=>Number(item.id)===Number(id));
-  if(!workout)return;
-  if(!confirm(`Delete ${workout.type} from ${workout.date}?`))return;
-  state.data.history=state.data.history.filter(item=>Number(item.id)!==Number(id));
-  recalculateProgramWeeks();
-  persist();
-  renderHome();
-  renderHistory();
-  toast('Workout deleted');
-}
-
-function renderExerciseSelect(){
-  const s=$('#exerciseSelect');
-  if(!s)return;
-  const old=s.value;
-  s.innerHTML=exerciseNameList().map(n=>`<option>${n}</option>`).join('');
-  if(old)s.value=old;
-  renderExerciseHistory();
-}
-
-function renderExerciseHistory(){
-  const name=$('#exerciseSelect')?.value||exerciseNameList()[0]||'';
-  const entries=allEntries(name),best=bestE1RM(name),last=entries.at(-1);
-  const stats=$('#exerciseStats');
-  if(stats)stats.innerHTML=`<div class="stat"><span>Last load</span><strong>${last?last.weight+' lb':'--'}</strong></div><div class="stat"><span>Best e1RM</span><strong>${best||'--'}</strong></div><div class="stat"><span>Sessions</span><strong>${entries.length}</strong></div>`;
-  const list=$('#exerciseHistoryList');
-  if(list)list.innerHTML=entries.slice().reverse().map(e=>`<div class="card exercise-log"><strong>${e.date}</strong><span>${e.weight} lb · ${e.reps.join('/')}</span><span class="e1rm">e1RM ${Math.max(...e.reps.map(r=>e1rm(e.weight,r)))}</span></div>`).join('')||'<div class="card"><p>No entries yet.</p></div>';
-  if(entries.length)drawChart(entries);
-}
-
-function renderExerciseLibrary(){
-  const el=$('#exerciseLibraryList');
-  if(!el)return;
-  el.innerHTML=`<div class="exercise-library-grid">${state.data.exercises.map(ex=>`<div class="exercise-item" data-id="${ex.id}"><div class="exercise-item-head"><strong>${ex.name}</strong></div><div class="exercise-meta"><label>Name<input data-field="name" value="${ex.name}"></label><label>Sets<input data-field="defaultSets" type="number" value="${clampSets(ex.defaultSets)}" max="10"></label><label>Reps<input data-field="reps" type="number" value="${ex.reps}"></label></div><div class="exercise-actions"><button class="secondary" data-save-exercise="${ex.id}">Save</button><button class="danger" data-delete-exercise="${ex.id}">Delete</button></div></div>`).join('')}</div>`;
-  el.querySelectorAll('[data-save-exercise]').forEach(btn=>btn.onclick=()=>saveExercise(btn.dataset.saveExercise));
-  el.querySelectorAll('[data-delete-exercise]').forEach(btn=>btn.onclick=()=>deleteExercise(btn.dataset.deleteExercise));
-}
-
-function addExercise(){
-  const id=`exercise-${Date.now()}`;
-  state.data.exercises.push({id,name:'New Exercise',defaultSets:3,reps:10,step:5});
-  persist();
-  renderExerciseLibrary();
-  renderExerciseSelect();
-  renderHome();
-}
-
-function saveExercise(id){
-  const card=$(`.exercise-item[data-id="${id}"]`);
-  const ex=state.data.exercises.find(x=>x.id===id);
-  if(!card||!ex)return;
-  ex.name=card.querySelector('[data-field="name"]').value.trim()||'Unnamed Exercise';
-  ex.defaultSets=clampSets(card.querySelector('[data-field="defaultSets"]').value);
-  ex.reps=Number(card.querySelector('[data-field="reps"]').value)||0;
-  persist();
-  renderExerciseLibrary();
-  renderExerciseSelect();
-  renderHome();
-  toast('Exercise saved');
-}
-
-function deleteExercise(id){
-  state.data.exercises=state.data.exercises.filter(x=>x.id!==id);
-  state.data.workouts.forEach(w=>w.exerciseIds=w.exerciseIds.filter(exId=>exId!==id));
-  persist();
-  renderExerciseLibrary();
-  renderHome();
-  renderExerciseSelect();
-  toast('Exercise deleted');
-}
-
-function renderTemplates(){
-  const el=$('#templateList');
-  if(!el)return;
-  el.innerHTML=`<div class="template-list">${state.data.workouts.map(w=>{const options=exerciseNameList().map(n=>`<option>${n}</option>`).join('');return`<div class="template-card" data-template-id="${w.id}"><div class="template-head"><strong>${w.name}</strong><button class="secondary" data-save-template="${w.id}">Save</button></div><div class="template-meta"><label>Name<input data-field="template-name" value="${w.name}"></label><label>Day<select data-field="template-day"><option${w.day==='Monday'?' selected':''}>Monday</option><option${w.day==='Tuesday'?' selected':''}>Tuesday</option><option${w.day==='Wednesday'?' selected':''}>Wednesday</option><option${w.day==='Thursday'?' selected':''}>Thursday</option><option${w.day==='Friday'?' selected':''}>Friday</option><option${w.day==='Saturday'?' selected':''}>Saturday</option><option${w.day==='Sunday'?' selected':''}>Sunday</option></select></label></div><div class="template-exercises">${w.exerciseIds.map((id,idx)=>{const ex=exerciseById(id);return`<div class="template-exercise" data-exercise-index="${idx}"><strong>${ex?ex.name:'Missing exercise'}</strong><button class="move-btn" data-move-up="${idx}">↑</button><button class="move-btn" data-move-down="${idx}">↓</button><button class="remove-btn" data-remove-exercise="${idx}">Remove</button></div>`}).join('')}</div><div class="template-add-row"><select data-add-select>${options}</select><button class="primary" data-add-exercise-to-template="${w.id}">Add exercise</button></div></div>`}).join('')}</div>`;
-  el.querySelectorAll('[data-save-template]').forEach(btn=>btn.onclick=()=>saveTemplate(btn.dataset.saveTemplate));
-  el.querySelectorAll('[data-remove-exercise]').forEach(btn=>btn.onclick=()=>removeExerciseFromTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.removeExercise)));
-  el.querySelectorAll('[data-move-up]').forEach(btn=>btn.onclick=()=>moveExerciseInTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.moveUp),-1));
-  el.querySelectorAll('[data-move-down]').forEach(btn=>btn.onclick=()=>moveExerciseInTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.moveDown),1));
-  el.querySelectorAll('[data-add-exercise-to-template]').forEach(btn=>btn.onclick=()=>addExerciseToTemplate(btn.dataset.addExerciseToTemplate));
-}
-
-function saveTemplate(id){
-  const card=$(`.template-card[data-template-id="${id}"]`);
-  const w=workoutById(id);
-  if(!card||!w)return;
-  w.name=card.querySelector('[data-field="template-name"]').value.trim()||w.name;
-  w.day=card.querySelector('[data-field="template-day"]').value;
-  persist();
-  renderHome();
-  renderTemplates();
-  toast('Template saved');
-}
-
-function addExerciseToTemplate(id){
-  const card=$(`.template-card[data-template-id="${id}"]`);
-  const w=workoutById(id);
-  if(!card||!w)return;
-  const selected=card.querySelector('[data-add-select]').value;
-  const ex=state.data.exercises.find(e=>e.name===selected);
-  if(!ex){toast('Pick an exercise');return}
-  w.exerciseIds.push(ex.id);
-  persist();
-  renderTemplates();
-  renderHome();
-  toast('Exercise added');
-}
-
-function removeExerciseFromTemplate(templateId,index){
-  const w=workoutById(templateId);
-  if(!w)return;
-  w.exerciseIds.splice(index,1);
-  persist();
-  renderTemplates();
-  renderHome();
-  toast('Exercise removed');
-}
-
-function moveExerciseInTemplate(templateId,index,direction){
-  const w=workoutById(templateId);
-  if(!w)return;
-  const next=index+direction;
-  if(next<0||next>=w.exerciseIds.length)return;
-  [w.exerciseIds[index],w.exerciseIds[next]]=[w.exerciseIds[next],w.exerciseIds[index]];
-  persist();
-  renderTemplates();
-  renderHome();
-}
-
-function bindWorkoutTemplateButtons(workout){}
-
-function drawChart(entries){
-  const canvas=$('#progressChart');
-  if(!canvas)return;
-  const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,w=canvas.clientWidth||700,h=300;
-  canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
-  const values=entries.map(entry=>Math.max(...entry.reps.map(reps=>e1rm(entry.weight,reps))));
-  const styles=getComputedStyle(document.body),muted=styles.getPropertyValue('--muted').trim()||'#657482',grid=styles.getPropertyValue('--line').trim()||'#d8e0e6';
-  const margin={left:54,right:12,top:18,bottom:78},plotWidth=w-66,plotHeight=h-96;
-  ctx.font='11px system-ui';ctx.fillStyle=muted;ctx.strokeStyle=grid;ctx.lineWidth=1;ctx.textBaseline='middle';
-  if(!values.length){ctx.textAlign='center';ctx.fillText('No data yet',w/2,h/2);return}
-  let minimum=Math.min(...values),maximum=Math.max(...values);
-  const padding=Math.max(5,Math.ceil((maximum-minimum||10)*.15));
-  minimum=Math.floor((minimum-padding)/5)*5;
-  maximum=Math.ceil((maximum+padding)/5)*5;
-  if(maximum===minimum)maximum=minimum+10;
-  const tickCount=5;
-  for(let i=0;i<tickCount;i++){
-    const value=Math.round(maximum-i*(maximum-minimum)/(tickCount-1)),y=margin.top+i*plotHeight/(tickCount-1);
-    ctx.beginPath();ctx.moveTo(margin.left,y);ctx.lineTo(w-margin.right,y);ctx.stroke();
-    ctx.textAlign='right';ctx.fillText(String(value),margin.left-7,y)
-  }
-  ctx.save();ctx.translate(14,margin.top+plotHeight/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('Estimated 1RM (lb)',0,0);ctx.restore();
-  const pointX=index=>margin.left+(values.length===1?plotWidth/2:index*plotWidth/(values.length-1));
-  const pointY=value=>margin.top+(maximum-value)*plotHeight/(maximum-minimum);
-  ctx.strokeStyle='#2b75a9';ctx.lineWidth=3;ctx.beginPath();values.forEach((value,index)=>index?ctx.lineTo(pointX(index),pointY(value)):ctx.moveTo(pointX(index),pointY(value)));ctx.stroke();
-  ctx.fillStyle='#17365d';values.forEach((value,index)=>{ctx.beginPath();ctx.arc(pointX(index),pointY(value),4,0,Math.PI*2);ctx.fill()});
-  const maximumLabels=Math.max(2,Math.floor(plotWidth/80)),stride=Math.max(1,Math.ceil(entries.length/maximumLabels));
-  ctx.fillStyle=muted;ctx.font='10px system-ui';ctx.textAlign='right';
-  entries.forEach((entry,index)=>{
-    if(index%stride&&index!==entries.length-1)return;
-    const parsed=new Date(entry.date+'T00:00:00'),date=isNaN(parsed)?entry.date:parsed.toLocaleDateString(undefined,{month:'short',day:'numeric'}),label=date+([6,12].includes(Number(entry.programWeek))?' (Deload)':'');
-    ctx.save();ctx.translate(pointX(index),margin.top+plotHeight+11);ctx.rotate(-Math.PI/4);ctx.fillText(label,0,0);ctx.restore()
-  });
-  ctx.textAlign='center';ctx.fillText('Workout date',margin.left+plotWidth/2,h-8)
-}
-
-function exportData(){
-  const blob=new Blob([JSON.stringify(state.data,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='strength-tracker-backup.json';
-  a.click();
-  URL.revokeObjectURL(a.href)
-}
-
-function importData(file){
-  const r=new FileReader();
-  r.onload=()=>{
-    try{
-      state.data=JSON.parse(r.result);
-      if(!state.data.exercises)state.data.exercises=DEFAULT_EXERCISES.slice();
-      if(!state.data.workouts)state.data.workouts=DEFAULT_WORKOUTS.slice();
-      recalculateProgramWeeks();
-      persist();
-      renderHome();
-      renderHistory();
-      renderExerciseLibrary();
-      renderTemplates();
-      toast('Backup imported')
-    }catch{
-      toast('That backup file is invalid')
-    }
-  };
-  r.readAsText(file)
-}
-
-function updateHomeDraftCard(){
-  const area=$('#draftResumeArea');
-  if(!area)return;
-  const draft=loadDraft();
-  if(draft&&draft.selected!==null){
-    const workout=workoutById(draft.selected);
-    area.classList.remove('hidden');
-    area.innerHTML=`<div class="draft-resume-card"><div><strong>Workout in progress</strong><small>${workout?workout.name:'Draft workout'}${draft.date?' · '+draft.date:''}</small></div><div class="resume-actions"><button id="continueDraftFromHomeBtn" type="button" class="secondary">Continue workout</button><button id="discardDraftBtn" type="button" class="discard-btn">Discard</button></div></div>`;
-    $('#continueDraftFromHomeBtn').onclick=()=>resumeDraftWorkout();
-    $('#discardDraftBtn').onclick=()=>discardDraftWorkout();
-  }else{
-    area.classList.add('hidden');
-    area.innerHTML='';
-  }
-}
-
-function startWorkoutFromHome(workoutId){
-  if(isDraftInProgress()){
-    toast('Workout in progress.');
-    return;
-  }
-  openWorkout(workoutId);
-}
-
-function resumeDraftWorkout(){
-  const draft=loadDraft();
-  if(!draft)return;
-  const workout=workoutById(draft.selected)||state.data.workouts[0];
-  if(!workout)return;
-  document.body.classList.add('workout-mode');
-  state.selected=workout.id;
-  const title=$('#workoutTitle');
-  if(title)title.textContent=workout.name;
-  renderWorkoutEditor(workout);
-  const dateInput=$('#workoutDate');
-  if(dateInput)dateInput.value=draft.date||new Date().toISOString().slice(0,10);
-  startWorkoutTimerFromDraft(draft);
-  showView('workout');
-}
-
-function discardDraftWorkout(){
-  clearDraft();
-  stopWorkoutTimer();
-  resetRestTimer();
-  workoutDurationStart=null;
-  state.selected=null;
-  renderHome();
-  toast('Draft workout discarded');
-}
-
-function restoreDraftIntoRenderedWorkout(){
-  const draft=loadDraft();
-  if(!draft||draft.selected!==state.selected)return;
-  [...document.querySelectorAll('.exercise-card')].forEach(card=>{
-    const draftItem=draft.exercises.find(x=>x.idx===Number(card.dataset.idx));
-    if(!draftItem)return;
-    const weight=card.querySelector('.weight-input');
-    if(weight)weight.value=draftItem.weight||'';
-    [...card.querySelectorAll('.set-cell input')].forEach((input,i)=>{input.value=draftItem.sets?.[i]||''});
-  });
-  const dateInput=$('#workoutDate');
-  if(draft.date&&dateInput)dateInput.value=draft.date;
-}
-
-function updateWorkoutTimerDisplay(){
-  if(!workoutStartTime)return;
-  const el=$('#workoutElapsed');
-  if(el)el.textContent=formatDuration(Date.now()-workoutStartTime);
-}
-function startWorkoutTimerFresh(){
-  workoutStartTime=Date.now();
-  workoutDurationStart=workoutStartTime;
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=setInterval(updateWorkoutTimerDisplay,1000);
-  updateWorkoutTimerDisplay();
-  saveDraft();
-}
-function startWorkoutTimerFromDraft(draft){
-  workoutStartTime=draft.workoutStartTime||Date.now();
-  workoutDurationStart=draft.workoutDurationStart||workoutStartTime;
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=setInterval(updateWorkoutTimerDisplay,1000);
-  updateWorkoutTimerDisplay();
-  saveDraft();
-}
-function stopWorkoutTimer(){
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=null;
-  workoutStartTime=null;
-  const el=$('#workoutElapsed');
-  if(el)el.textContent='00:00';
-}
-
-function updateRestControls(){const btn=$('#restStartBtn');if(!btn)return;btn.textContent=restRunning?'Stop':'Start';btn.classList.toggle('stop',restRunning);btn.classList.toggle('start',!restRunning)}
-function updateRestDisplay(){const elapsed=restElapsedBeforePause+(restRunning?Date.now()-restStartTime:0);const el=$('#restElapsed');if(el)el.textContent=formatDuration(elapsed);updateRestControls()}
-function startRestTimer(){if(restRunning){stopRestTimer();return}restRunning=true;restStartTime=Date.now();clearInterval(restTimerInterval);restTimerInterval=setInterval(updateRestDisplay,1000);updateRestDisplay()}
-function stopRestTimer(){if(!restRunning)return;restElapsedBeforePause+=Date.now()-restStartTime;restRunning=false;clearInterval(restTimerInterval);restTimerInterval=null;updateRestDisplay()}
-function resetRestTimer(){clearInterval(restTimerInterval);restTimerInterval=null;restRunning=false;restStartTime=null;restElapsedBeforePause=0;const el=$('#restElapsed');if(el)el.textContent='00:00';updateRestControls()}
-
-function saveWorkout(){
-  const date=$('#workoutDate').value;
-  if(!validDateString(date)){toast('Choose a valid workout date');return}
-  const workout=workoutById(state.selected);
-  const durationMs=workoutDurationStart?Date.now()-workoutDurationStart:null;
-  const exercises=workout?.exerciseIds.map((exerciseId,idx)=>{
-    const ex=exerciseById(exerciseId);
-    const card=$(`.exercise-card[data-idx="${idx}"]`);
-    return{
-      name:ex.name,
-      weight:Number(card.querySelector('.weight-input').value)||0,
-      reps:[...card.querySelectorAll('.set-cell input')].map(i=>Number(i.value)||0),
-      goal:`${ex.defaultSets} x ${ex.reps||0}`
-    };
-  })||[];
-  if(exercises.some(e=>e.reps.some(r=>r===0))){toast('Enter reps for every set');return}
-  state.data.history.push({id:Date.now(),date,type:workout.name,programWeek:1,durationMs,exercises});
-  recalculateProgramWeeks();
-  const savedWorkout=state.data.history[state.data.history.length-1];
-  persist();
-  clearDraft();
-  stopWorkoutTimer();
-  resetRestTimer();
-  workoutDurationStart=null;
-  document.body.classList.remove('workout-mode');
-  renderHome();
-  toast(`Workout saved · ${weekLabel(savedWorkout.programWeek)}`);
-  showView('history');
-}
-
-function renderHistory(){
-  const el=$('#historyList');
-  if(!el)return;
-  el.innerHTML=state.data.history.length?state.data.history.slice().reverse().map(w=>{
-    const timeText=typeof w.durationMs==='number'&&w.durationMs>0?formatDuration(w.durationMs):'--';
-    return`<details class="card history-item"><summary><div class="history-summary-row"><div class="history-left"><strong class="history-workout-name">${w.type}</strong><span class="history-time" style="display:inline-block;margin-left:18px;min-width:64px;">${timeText}</span></div><div class="history-right"><span class="history-date">${w.date}${[6,12].includes(Number(w.programWeek))?' (Deload)':''}</span><button class="trash-btn" data-delete-id="${w.id}" aria-label="Delete ${w.type} on ${w.date}" title="Delete workout">🗑</button></div></div></summary><div class="history-details">${w.exercises.map(e=>{const best=Math.max(...e.reps.map(r=>e1rm(e.weight,r)));return`<div class="history-exercise"><strong>${e.name}</strong><span>${e.weight||'Bodyweight'}${e.weight?' lb':''}</span><small>Reps: ${e.reps.join(' / ')}${best?' · e1RM '+best:''}</small></div>`}).join('')}</div></details>`;
-  }).join(''):'<div class="card"><h3>No workouts saved yet</h3><p>Complete a workout and it will appear here.</p></div>';
-  el.querySelectorAll('.trash-btn').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();deleteWorkout(Number(button.dataset.deleteId))}));
-  renderExerciseSelect();
-}
-
-function deleteWorkout(id){
-  const workout=state.data.history.find(item=>Number(item.id)===Number(id));
-  if(!workout)return;
-  if(!confirm(`Delete ${workout.type} from ${workout.date}?`))return;
-  state.data.history=state.data.history.filter(item=>Number(item.id)!==Number(id));
-  recalculateProgramWeeks();
-  persist();
-  renderHome();
-  renderHistory();
-  toast('Workout deleted');
-}
-
-function renderExerciseSelect(){
-  const s=$('#exerciseSelect');
-  if(!s)return;
-  const old=s.value;
-  s.innerHTML=exerciseNameList().map(n=>`<option>${n}</option>`).join('');
-  if(old)s.value=old;
-  renderExerciseHistory();
-}
-
-function renderExerciseHistory(){
-  const name=$('#exerciseSelect')?.value||exerciseNameList()[0]||'';
-  const entries=allEntries(name),best=bestE1RM(name),last=entries.at(-1);
-  const stats=$('#exerciseStats');
-  if(stats)stats.innerHTML=`<div class="stat"><span>Last load</span><strong>${last?last.weight+' lb':'--'}</strong></div><div class="stat"><span>Best e1RM</span><strong>${best||'--'}</strong></div><div class="stat"><span>Sessions</span><strong>${entries.length}</strong></div>`;
-  const list=$('#exerciseHistoryList');
-  if(list)list.innerHTML=entries.slice().reverse().map(e=>`<div class="card exercise-log"><strong>${e.date}</strong><span>${e.weight} lb · ${e.reps.join('/')}</span><span class="e1rm">e1RM ${Math.max(...e.reps.map(r=>e1rm(e.weight,r)))}</span></div>`).join('')||'<div class="card"><p>No entries yet.</p></div>';
-  if(entries.length)drawChart(entries);
-}
-
-function renderExerciseLibrary(){
-  const el=$('#exerciseLibraryList');
-  if(!el)return;
-  el.innerHTML=`<div class="exercise-library-grid">${state.data.exercises.map(ex=>`<div class="exercise-item" data-id="${ex.id}"><div class="exercise-item-head"><strong>${ex.name}</strong></div><div class="exercise-meta"><label>Name<input data-field="name" value="${ex.name}"></label><label>Sets<input data-field="defaultSets" type="number" value="${clampSets(ex.defaultSets)}" max="10"></label><label>Reps<input data-field="reps" type="number" value="${ex.reps}"></label></div><div class="exercise-actions"><button class="secondary" data-save-exercise="${ex.id}">Save</button><button class="danger" data-delete-exercise="${ex.id}">Delete</button></div></div>`).join('')}</div>`;
-  el.querySelectorAll('[data-save-exercise]').forEach(btn=>btn.onclick=()=>saveExercise(btn.dataset.saveExercise));
-  el.querySelectorAll('[data-delete-exercise]').forEach(btn=>btn.onclick=()=>deleteExercise(btn.dataset.deleteExercise));
-}
-
-function addExercise(){
-  const id=`exercise-${Date.now()}`;
-  state.data.exercises.push({id,name:'New Exercise',defaultSets:3,reps:10,step:5});
-  persist();
-  renderExerciseLibrary();
-  renderExerciseSelect();
-  renderHome();
-}
-
-function saveExercise(id){
-  const card=$(`.exercise-item[data-id="${id}"]`);
-  const ex=state.data.exercises.find(x=>x.id===id);
-  if(!card||!ex)return;
-  ex.name=card.querySelector('[data-field="name"]').value.trim()||'Unnamed Exercise';
-  ex.defaultSets=clampSets(card.querySelector('[data-field="defaultSets"]').value);
-  ex.reps=Number(card.querySelector('[data-field="reps"]').value)||0;
-  persist();
-  renderExerciseLibrary();
-  renderExerciseSelect();
-  renderHome();
-  toast('Exercise saved');
-}
-
-function deleteExercise(id){
-  state.data.exercises=state.data.exercises.filter(x=>x.id!==id);
-  state.data.workouts.forEach(w=>w.exerciseIds=w.exerciseIds.filter(exId=>exId!==id));
-  persist();
-  renderExerciseLibrary();
-  renderHome();
-  renderExerciseSelect();
-  toast('Exercise deleted');
-}
-
-function renderTemplates(){
-  const el=$('#templateList');
-  if(!el)return;
-  el.innerHTML=`<div class="template-list">${state.data.workouts.map(w=>{const options=exerciseNameList().map(n=>`<option>${n}</option>`).join('');return`<div class="template-card" data-template-id="${w.id}"><div class="template-head"><strong>${w.name}</strong><button class="secondary" data-save-template="${w.id}">Save</button></div><div class="template-meta"><label>Name<input data-field="template-name" value="${w.name}"></label><label>Day<select data-field="template-day"><option${w.day==='Monday'?' selected':''}>Monday</option><option${w.day==='Tuesday'?' selected':''}>Tuesday</option><option${w.day==='Wednesday'?' selected':''}>Wednesday</option><option${w.day==='Thursday'?' selected':''}>Thursday</option><option${w.day==='Friday'?' selected':''}>Friday</option><option${w.day==='Saturday'?' selected':''}>Saturday</option><option${w.day==='Sunday'?' selected':''}>Sunday</option></select></label></div><div class="template-exercises">${w.exerciseIds.map((id,idx)=>{const ex=exerciseById(id);return`<div class="template-exercise" data-exercise-index="${idx}"><strong>${ex?ex.name:'Missing exercise'}</strong><button class="move-btn" data-move-up="${idx}">↑</button><button class="move-btn" data-move-down="${idx}">↓</button><button class="remove-btn" data-remove-exercise="${idx}">Remove</button></div>`}).join('')}</div><div class="template-add-row"><select data-add-select>${options}</select><button class="primary" data-add-exercise-to-template="${w.id}">Add exercise</button></div></div>`}).join('')}</div>`;
-  el.querySelectorAll('[data-save-template]').forEach(btn=>btn.onclick=()=>saveTemplate(btn.dataset.saveTemplate));
-  el.querySelectorAll('[data-remove-exercise]').forEach(btn=>btn.onclick=()=>removeExerciseFromTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.removeExercise)));
-  el.querySelectorAll('[data-move-up]').forEach(btn=>btn.onclick=()=>moveExerciseInTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.moveUp),-1));
-  el.querySelectorAll('[data-move-down]').forEach(btn=>btn.onclick=()=>moveExerciseInTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.moveDown),1));
-  el.querySelectorAll('[data-add-exercise-to-template]').forEach(btn=>btn.onclick=()=>addExerciseToTemplate(btn.dataset.addExerciseToTemplate));
-}
-
-function saveTemplate(id){
-  const card=$(`.template-card[data-template-id="${id}"]`);
-  const w=workoutById(id);
-  if(!card||!w)return;
-  w.name=card.querySelector('[data-field="template-name"]').value.trim()||w.name;
-  w.day=card.querySelector('[data-field="template-day"]').value;
-  persist();
-  renderHome();
-  renderTemplates();
-  toast('Template saved');
-}
-
-function addExerciseToTemplate(id){
-  const card=$(`.template-card[data-template-id="${id}"]`);
-  const w=workoutById(id);
-  if(!card||!w)return;
-  const selected=card.querySelector('[data-add-select]').value;
-  const ex=state.data.exercises.find(e=>e.name===selected);
-  if(!ex){toast('Pick an exercise');return}
-  w.exerciseIds.push(ex.id);
-  persist();
-  renderTemplates();
-  renderHome();
-  toast('Exercise added');
-}
-
-function removeExerciseFromTemplate(templateId,index){
-  const w=workoutById(templateId);
-  if(!w)return;
-  w.exerciseIds.splice(index,1);
-  persist();
-  renderTemplates();
-  renderHome();
-  toast('Exercise removed');
-}
-
-function moveExerciseInTemplate(templateId,index,direction){
-  const w=workoutById(templateId);
-  if(!w)return;
-  const next=index+direction;
-  if(next<0||next>=w.exerciseIds.length)return;
-  [w.exerciseIds[index],w.exerciseIds[next]]=[w.exerciseIds[next],w.exerciseIds[index]];
-  persist();
-  renderTemplates();
-  renderHome();
-}
-
-function bindWorkoutTemplateButtons(workout){}
-
-function drawChart(entries){
-  const canvas=$('#progressChart');
-  if(!canvas)return;
-  const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,w=canvas.clientWidth||700,h=300;
-  canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
-  const values=entries.map(entry=>Math.max(...entry.reps.map(reps=>e1rm(entry.weight,reps))));
-  const styles=getComputedStyle(document.body),muted=styles.getPropertyValue('--muted').trim()||'#657482',grid=styles.getPropertyValue('--line').trim()||'#d8e0e6';
-  const margin={left:54,right:12,top:18,bottom:78},plotWidth=w-66,plotHeight=h-96;
-  ctx.font='11px system-ui';ctx.fillStyle=muted;ctx.strokeStyle=grid;ctx.lineWidth=1;ctx.textBaseline='middle';
-  if(!values.length){ctx.textAlign='center';ctx.fillText('No data yet',w/2,h/2);return}
-  let minimum=Math.min(...values),maximum=Math.max(...values);
-  const padding=Math.max(5,Math.ceil((maximum-minimum||10)*.15));
-  minimum=Math.floor((minimum-padding)/5)*5;
-  maximum=Math.ceil((maximum+padding)/5)*5;
-  if(maximum===minimum)maximum=minimum+10;
-  const tickCount=5;
-  for(let i=0;i<tickCount;i++){
-    const value=Math.round(maximum-i*(maximum-minimum)/(tickCount-1)),y=margin.top+i*plotHeight/(tickCount-1);
-    ctx.beginPath();ctx.moveTo(margin.left,y);ctx.lineTo(w-margin.right,y);ctx.stroke();
-    ctx.textAlign='right';ctx.fillText(String(value),margin.left-7,y)
-  }
-  ctx.save();ctx.translate(14,margin.top+plotHeight/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('Estimated 1RM (lb)',0,0);ctx.restore();
-  const pointX=index=>margin.left+(values.length===1?plotWidth/2:index*plotWidth/(values.length-1));
-  const pointY=value=>margin.top+(maximum-value)*plotHeight/(maximum-minimum);
-  ctx.strokeStyle='#2b75a9';ctx.lineWidth=3;ctx.beginPath();values.forEach((value,index)=>index?ctx.lineTo(pointX(index),pointY(value)):ctx.moveTo(pointX(index),pointY(value)));ctx.stroke();
-  ctx.fillStyle='#17365d';values.forEach((value,index)=>{ctx.beginPath();ctx.arc(pointX(index),pointY(value),4,0,Math.PI*2);ctx.fill()});
-  const maximumLabels=Math.max(2,Math.floor(plotWidth/80)),stride=Math.max(1,Math.ceil(entries.length/maximumLabels));
-  ctx.fillStyle=muted;ctx.font='10px system-ui';ctx.textAlign='right';
-  entries.forEach((entry,index)=>{
-    if(index%stride&&index!==entries.length-1)return;
-    const parsed=new Date(entry.date+'T00:00:00'),date=isNaN(parsed)?entry.date:parsed.toLocaleDateString(undefined,{month:'short',day:'numeric'}),label=date+([6,12].includes(Number(entry.programWeek))?' (Deload)':'');
-    ctx.save();ctx.translate(pointX(index),margin.top+plotHeight+11);ctx.rotate(-Math.PI/4);ctx.fillText(label,0,0);ctx.restore()
-  });
-  ctx.textAlign='center';ctx.fillText('Workout date',margin.left+plotWidth/2,h-8)
-}
-
-function exportData(){
-  const blob=new Blob([JSON.stringify(state.data,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='strength-tracker-backup.json';
-  a.click();
-  URL.revokeObjectURL(a.href)
-}
-
-function importData(file){
-  const r=new FileReader();
-  r.onload=()=>{
-    try{
-      state.data=JSON.parse(r.result);
-      if(!state.data.exercises)state.data.exercises=DEFAULT_EXERCISES.slice();
-      if(!state.data.workouts)state.data.workouts=DEFAULT_WORKOUTS.slice();
-      recalculateProgramWeeks();
-      persist();
-      renderHome();
-      renderHistory();
-      renderExerciseLibrary();
-      renderTemplates();
-      toast('Backup imported')
-    }catch{
-      toast('That backup file is invalid')
-    }
-  };
-  r.readAsText(file)
-}
-
-function updateHomeDraftCard(){
-  const area=$('#draftResumeArea');
-  if(!area)return;
-  const draft=loadDraft();
-  if(draft&&draft.selected!==null){
-    const workout=workoutById(draft.selected);
-    area.classList.remove('hidden');
-    area.innerHTML=`<div class="draft-resume-card"><div><strong>Workout in progress</strong><small>${workout?workout.name:'Draft workout'}${draft.date?' · '+draft.date:''}</small></div><div class="resume-actions"><button id="continueDraftFromHomeBtn" type="button" class="secondary">Continue workout</button><button id="discardDraftBtn" type="button" class="discard-btn">Discard</button></div></div>`;
-    $('#continueDraftFromHomeBtn').onclick=()=>resumeDraftWorkout();
-    $('#discardDraftBtn').onclick=()=>discardDraftWorkout();
-  }else{
-    area.classList.add('hidden');
-    area.innerHTML='';
-  }
-}
-
-function startWorkoutFromHome(workoutId){
-  if(isDraftInProgress()){
-    toast('Workout in progress.');
-    return;
-  }
-  openWorkout(workoutId);
-}
-
-function resumeDraftWorkout(){
-  const draft=loadDraft();
-  if(!draft)return;
-  const workout=workoutById(draft.selected)||state.data.workouts[0];
-  if(!workout)return;
-  document.body.classList.add('workout-mode');
-  state.selected=workout.id;
-  const title=$('#workoutTitle');
-  if(title)title.textContent=workout.name;
-  renderWorkoutEditor(workout);
-  const dateInput=$('#workoutDate');
-  if(dateInput)dateInput.value=draft.date||new Date().toISOString().slice(0,10);
-  startWorkoutTimerFromDraft(draft);
-  showView('workout');
-}
-
-function discardDraftWorkout(){
-  clearDraft();
-  stopWorkoutTimer();
-  resetRestTimer();
-  workoutDurationStart=null;
-  state.selected=null;
-  renderHome();
-  toast('Draft workout discarded');
-}
-
-function restoreDraftIntoRenderedWorkout(){
-  const draft=loadDraft();
-  if(!draft||draft.selected!==state.selected)return;
-  [...document.querySelectorAll('.exercise-card')].forEach(card=>{
-    const draftItem=draft.exercises.find(x=>x.idx===Number(card.dataset.idx));
-    if(!draftItem)return;
-    const weight=card.querySelector('.weight-input');
-    if(weight)weight.value=draftItem.weight||'';
-    [...card.querySelectorAll('.set-cell input')].forEach((input,i)=>{input.value=draftItem.sets?.[i]||''});
-  });
-  const dateInput=$('#workoutDate');
-  if(draft.date&&dateInput)dateInput.value=draft.date;
-}
-
-function updateWorkoutTimerDisplay(){
-  if(!workoutStartTime)return;
-  const el=$('#workoutElapsed');
-  if(el)el.textContent=formatDuration(Date.now()-workoutStartTime);
-}
-function startWorkoutTimerFresh(){
-  workoutStartTime=Date.now();
-  workoutDurationStart=workoutStartTime;
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=setInterval(updateWorkoutTimerDisplay,1000);
-  updateWorkoutTimerDisplay();
-  saveDraft();
-}
-function startWorkoutTimerFromDraft(draft){
-  workoutStartTime=draft.workoutStartTime||Date.now();
-  workoutDurationStart=draft.workoutDurationStart||workoutStartTime;
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=setInterval(updateWorkoutTimerDisplay,1000);
-  updateWorkoutTimerDisplay();
-  saveDraft();
-}
-function stopWorkoutTimer(){
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=null;
-  workoutStartTime=null;
-  const el=$('#workoutElapsed');
-  if(el)el.textContent='00:00';
-}
-
-function updateRestControls(){const btn=$('#restStartBtn');if(!btn)return;btn.textContent=restRunning?'Stop':'Start';btn.classList.toggle('stop',restRunning);btn.classList.toggle('start',!restRunning)}
-function updateRestDisplay(){const elapsed=restElapsedBeforePause+(restRunning?Date.now()-restStartTime:0);const el=$('#restElapsed');if(el)el.textContent=formatDuration(elapsed);updateRestControls()}
-function startRestTimer(){if(restRunning){stopRestTimer();return}restRunning=true;restStartTime=Date.now();clearInterval(restTimerInterval);restTimerInterval=setInterval(updateRestDisplay,1000);updateRestDisplay()}
-function stopRestTimer(){if(!restRunning)return;restElapsedBeforePause+=Date.now()-restStartTime;restRunning=false;clearInterval(restTimerInterval);restTimerInterval=null;updateRestDisplay()}
-function resetRestTimer(){clearInterval(restTimerInterval);restTimerInterval=null;restRunning=false;restStartTime=null;restElapsedBeforePause=0;const el=$('#restElapsed');if(el)el.textContent='00:00';updateRestControls()}
-
-function saveWorkout(){
-  const date=$('#workoutDate').value;
-  if(!validDateString(date)){toast('Choose a valid workout date');return}
-  const workout=workoutById(state.selected);
-  const durationMs=workoutDurationStart?Date.now()-workoutDurationStart:null;
-  const exercises=workout?.exerciseIds.map((exerciseId,idx)=>{
-    const ex=exerciseById(exerciseId);
-    const card=$(`.exercise-card[data-idx="${idx}"]`);
-    return{
-      name:ex.name,
-      weight:Number(card.querySelector('.weight-input').value)||0,
-      reps:[...card.querySelectorAll('.set-cell input')].map(i=>Number(i.value)||0),
-      goal:`${ex.defaultSets} x ${ex.reps||0}`
-    };
-  })||[];
-  if(exercises.some(e=>e.reps.some(r=>r===0))){toast('Enter reps for every set');return}
-  state.data.history.push({id:Date.now(),date,type:workout.name,programWeek:1,durationMs,exercises});
-  recalculateProgramWeeks();
-  const savedWorkout=state.data.history[state.data.history.length-1];
-  persist();
-  clearDraft();
-  stopWorkoutTimer();
-  resetRestTimer();
-  workoutDurationStart=null;
-  document.body.classList.remove('workout-mode');
-  renderHome();
-  toast(`Workout saved · ${weekLabel(savedWorkout.programWeek)}`);
-  showView('history');
-}
-
-function renderHistory(){
-  const el=$('#historyList');
-  if(!el)return;
-  el.innerHTML=state.data.history.length?state.data.history.slice().reverse().map(w=>{
-    const timeText=typeof w.durationMs==='number'&&w.durationMs>0?formatDuration(w.durationMs):'--';
-    return`<details class="card history-item"><summary><div class="history-summary-row"><div class="history-left"><strong class="history-workout-name">${w.type}</strong><span class="history-time" style="display:inline-block;margin-left:18px;min-width:64px;">${timeText}</span></div><div class="history-right"><span class="history-date">${w.date}${[6,12].includes(Number(w.programWeek))?' (Deload)':''}</span><button class="trash-btn" data-delete-id="${w.id}" aria-label="Delete ${w.type} on ${w.date}" title="Delete workout">🗑</button></div></div></summary><div class="history-details">${w.exercises.map(e=>{const best=Math.max(...e.reps.map(r=>e1rm(e.weight,r)));return`<div class="history-exercise"><strong>${e.name}</strong><span>${e.weight||'Bodyweight'}${e.weight?' lb':''}</span><small>Reps: ${e.reps.join(' / ')}${best?' · e1RM '+best:''}</small></div>`}).join('')}</div></details>`;
-  }).join(''):'<div class="card"><h3>No workouts saved yet</h3><p>Complete a workout and it will appear here.</p></div>';
-  el.querySelectorAll('.trash-btn').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();deleteWorkout(Number(button.dataset.deleteId))}));
-  renderExerciseSelect();
-}
-
-function deleteWorkout(id){
-  const workout=state.data.history.find(item=>Number(item.id)===Number(id));
-  if(!workout)return;
-  if(!confirm(`Delete ${workout.type} from ${workout.date}?`))return;
-  state.data.history=state.data.history.filter(item=>Number(item.id)!==Number(id));
-  recalculateProgramWeeks();
-  persist();
-  renderHome();
-  renderHistory();
-  toast('Workout deleted');
-}
-
-function renderExerciseSelect(){
-  const s=$('#exerciseSelect');
-  if(!s)return;
-  const old=s.value;
-  s.innerHTML=exerciseNameList().map(n=>`<option>${n}</option>`).join('');
-  if(old)s.value=old;
-  renderExerciseHistory();
-}
-
-function renderExerciseHistory(){
-  const name=$('#exerciseSelect')?.value||exerciseNameList()[0]||'';
-  const entries=allEntries(name),best=bestE1RM(name),last=entries.at(-1);
-  const stats=$('#exerciseStats');
-  if(stats)stats.innerHTML=`<div class="stat"><span>Last load</span><strong>${last?last.weight+' lb':'--'}</strong></div><div class="stat"><span>Best e1RM</span><strong>${best||'--'}</strong></div><div class="stat"><span>Sessions</span><strong>${entries.length}</strong></div>`;
-  const list=$('#exerciseHistoryList');
-  if(list)list.innerHTML=entries.slice().reverse().map(e=>`<div class="card exercise-log"><strong>${e.date}</strong><span>${e.weight} lb · ${e.reps.join('/')}</span><span class="e1rm">e1RM ${Math.max(...e.reps.map(r=>e1rm(e.weight,r)))}</span></div>`).join('')||'<div class="card"><p>No entries yet.</p></div>';
-  if(entries.length)drawChart(entries);
-}
-
-function renderExerciseLibrary(){
-  const el=$('#exerciseLibraryList');
-  if(!el)return;
-  el.innerHTML=`<div class="exercise-library-grid">${state.data.exercises.map(ex=>`<div class="exercise-item" data-id="${ex.id}"><div class="exercise-item-head"><strong>${ex.name}</strong></div><div class="exercise-meta"><label>Name<input data-field="name" value="${ex.name}"></label><label>Sets<input data-field="defaultSets" type="number" value="${clampSets(ex.defaultSets)}" max="10"></label><label>Reps<input data-field="reps" type="number" value="${ex.reps}"></label></div><div class="exercise-actions"><button class="secondary" data-save-exercise="${ex.id}">Save</button><button class="danger" data-delete-exercise="${ex.id}">Delete</button></div></div>`).join('')}</div>`;
-  el.querySelectorAll('[data-save-exercise]').forEach(btn=>btn.onclick=()=>saveExercise(btn.dataset.saveExercise));
-  el.querySelectorAll('[data-delete-exercise]').forEach(btn=>btn.onclick=()=>deleteExercise(btn.dataset.deleteExercise));
-}
-
-function addExercise(){
-  const id=`exercise-${Date.now()}`;
-  state.data.exercises.push({id,name:'New Exercise',defaultSets:3,reps:10,step:5});
-  persist();
-  renderExerciseLibrary();
-  renderExerciseSelect();
-  renderHome();
-}
-
-function saveExercise(id){
-  const card=$(`.exercise-item[data-id="${id}"]`);
-  const ex=state.data.exercises.find(x=>x.id===id);
-  if(!card||!ex)return;
-  ex.name=card.querySelector('[data-field="name"]').value.trim()||'Unnamed Exercise';
-  ex.defaultSets=clampSets(card.querySelector('[data-field="defaultSets"]').value);
-  ex.reps=Number(card.querySelector('[data-field="reps"]').value)||0;
-  persist();
-  renderExerciseLibrary();
-  renderExerciseSelect();
-  renderHome();
-  toast('Exercise saved');
-}
-
-function deleteExercise(id){
-  state.data.exercises=state.data.exercises.filter(x=>x.id!==id);
-  state.data.workouts.forEach(w=>w.exerciseIds=w.exerciseIds.filter(exId=>exId!==id));
-  persist();
-  renderExerciseLibrary();
-  renderHome();
-  renderExerciseSelect();
-  toast('Exercise deleted');
-}
-
-function renderTemplates(){
-  const el=$('#templateList');
-  if(!el)return;
-  el.innerHTML=`<div class="template-list">${state.data.workouts.map(w=>{const options=exerciseNameList().map(n=>`<option>${n}</option>`).join('');return`<div class="template-card" data-template-id="${w.id}"><div class="template-head"><strong>${w.name}</strong><button class="secondary" data-save-template="${w.id}">Save</button></div><div class="template-meta"><label>Name<input data-field="template-name" value="${w.name}"></label><label>Day<select data-field="template-day"><option${w.day==='Monday'?' selected':''}>Monday</option><option${w.day==='Tuesday'?' selected':''}>Tuesday</option><option${w.day==='Wednesday'?' selected':''}>Wednesday</option><option${w.day==='Thursday'?' selected':''}>Thursday</option><option${w.day==='Friday'?' selected':''}>Friday</option><option${w.day==='Saturday'?' selected':''}>Saturday</option><option${w.day==='Sunday'?' selected':''}>Sunday</option></select></label></div><div class="template-exercises">${w.exerciseIds.map((id,idx)=>{const ex=exerciseById(id);return`<div class="template-exercise" data-exercise-index="${idx}"><strong>${ex?ex.name:'Missing exercise'}</strong><button class="move-btn" data-move-up="${idx}">↑</button><button class="move-btn" data-move-down="${idx}">↓</button><button class="remove-btn" data-remove-exercise="${idx}">Remove</button></div>`}).join('')}</div><div class="template-add-row"><select data-add-select>${options}</select><button class="primary" data-add-exercise-to-template="${w.id}">Add exercise</button></div></div>`}).join('')}</div>`;
-  el.querySelectorAll('[data-save-template]').forEach(btn=>btn.onclick=()=>saveTemplate(btn.dataset.saveTemplate));
-  el.querySelectorAll('[data-remove-exercise]').forEach(btn=>btn.onclick=()=>removeExerciseFromTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.removeExercise)));
-  el.querySelectorAll('[data-move-up]').forEach(btn=>btn.onclick=()=>moveExerciseInTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.moveUp),-1));
-  el.querySelectorAll('[data-move-down]').forEach(btn=>btn.onclick=()=>moveExerciseInTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.moveDown),1));
-  el.querySelectorAll('[data-add-exercise-to-template]').forEach(btn=>btn.onclick=()=>addExerciseToTemplate(btn.dataset.addExerciseToTemplate));
-}
-
-function saveTemplate(id){
-  const card=$(`.template-card[data-template-id="${id}"]`);
-  const w=workoutById(id);
-  if(!card||!w)return;
-  w.name=card.querySelector('[data-field="template-name"]').value.trim()||w.name;
-  w.day=card.querySelector('[data-field="template-day"]').value;
-  persist();
-  renderHome();
-  renderTemplates();
-  toast('Template saved');
-}
-
-function addExerciseToTemplate(id){
-  const card=$(`.template-card[data-template-id="${id}"]`);
-  const w=workoutById(id);
-  if(!card||!w)return;
-  const selected=card.querySelector('[data-add-select]').value;
-  const ex=state.data.exercises.find(e=>e.name===selected);
-  if(!ex){toast('Pick an exercise');return}
-  w.exerciseIds.push(ex.id);
-  persist();
-  renderTemplates();
-  renderHome();
-  toast('Exercise added');
-}
-
-function removeExerciseFromTemplate(templateId,index){
-  const w=workoutById(templateId);
-  if(!w)return;
-  w.exerciseIds.splice(index,1);
-  persist();
-  renderTemplates();
-  renderHome();
-  toast('Exercise removed');
-}
-
-function moveExerciseInTemplate(templateId,index,direction){
-  const w=workoutById(templateId);
-  if(!w)return;
-  const next=index+direction;
-  if(next<0||next>=w.exerciseIds.length)return;
-  [w.exerciseIds[index],w.exerciseIds[next]]=[w.exerciseIds[next],w.exerciseIds[index]];
-  persist();
-  renderTemplates();
-  renderHome();
-}
-
-function bindWorkoutTemplateButtons(workout){}
-
-function drawChart(entries){
-  const canvas=$('#progressChart');
-  if(!canvas)return;
-  const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,w=canvas.clientWidth||700,h=300;
-  canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
-  const values=entries.map(entry=>Math.max(...entry.reps.map(reps=>e1rm(entry.weight,reps))));
-  const styles=getComputedStyle(document.body),muted=styles.getPropertyValue('--muted').trim()||'#657482',grid=styles.getPropertyValue('--line').trim()||'#d8e0e6';
-  const margin={left:54,right:12,top:18,bottom:78},plotWidth=w-66,plotHeight=h-96;
-  ctx.font='11px system-ui';ctx.fillStyle=muted;ctx.strokeStyle=grid;ctx.lineWidth=1;ctx.textBaseline='middle';
-  if(!values.length){ctx.textAlign='center';ctx.fillText('No data yet',w/2,h/2);return}
-  let minimum=Math.min(...values),maximum=Math.max(...values);
-  const padding=Math.max(5,Math.ceil((maximum-minimum||10)*.15));
-  minimum=Math.floor((minimum-padding)/5)*5;
-  maximum=Math.ceil((maximum+padding)/5)*5;
-  if(maximum===minimum)maximum=minimum+10;
-  const tickCount=5;
-  for(let i=0;i<tickCount;i++){
-    const value=Math.round(maximum-i*(maximum-minimum)/(tickCount-1)),y=margin.top+i*plotHeight/(tickCount-1);
-    ctx.beginPath();ctx.moveTo(margin.left,y);ctx.lineTo(w-margin.right,y);ctx.stroke();
-    ctx.textAlign='right';ctx.fillText(String(value),margin.left-7,y)
-  }
-  ctx.save();ctx.translate(14,margin.top+plotHeight/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('Estimated 1RM (lb)',0,0);ctx.restore();
-  const pointX=index=>margin.left+(values.length===1?plotWidth/2:index*plotWidth/(values.length-1));
-  const pointY=value=>margin.top+(maximum-value)*plotHeight/(maximum-minimum);
-  ctx.strokeStyle='#2b75a9';ctx.lineWidth=3;ctx.beginPath();values.forEach((value,index)=>index?ctx.lineTo(pointX(index),pointY(value)):ctx.moveTo(pointX(index),pointY(value)));ctx.stroke();
-  ctx.fillStyle='#17365d';values.forEach((value,index)=>{ctx.beginPath();ctx.arc(pointX(index),pointY(value),4,0,Math.PI*2);ctx.fill()});
-  const maximumLabels=Math.max(2,Math.floor(plotWidth/80)),stride=Math.max(1,Math.ceil(entries.length/maximumLabels));
-  ctx.fillStyle=muted;ctx.font='10px system-ui';ctx.textAlign='right';
-  entries.forEach((entry,index)=>{
-    if(index%stride&&index!==entries.length-1)return;
-    const parsed=new Date(entry.date+'T00:00:00'),date=isNaN(parsed)?entry.date:parsed.toLocaleDateString(undefined,{month:'short',day:'numeric'}),label=date+([6,12].includes(Number(entry.programWeek))?' (Deload)':'');
-    ctx.save();ctx.translate(pointX(index),margin.top+plotHeight+11);ctx.rotate(-Math.PI/4);ctx.fillText(label,0,0);ctx.restore()
-  });
-  ctx.textAlign='center';ctx.fillText('Workout date',margin.left+plotWidth/2,h-8)
-}
-
-function exportData(){
-  const blob=new Blob([JSON.stringify(state.data,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='strength-tracker-backup.json';
-  a.click();
-  URL.revokeObjectURL(a.href)
-}
-
-function importData(file){
-  const r=new FileReader();
-  r.onload=()=>{
-    try{
-      state.data=JSON.parse(r.result);
-      if(!state.data.exercises)state.data.exercises=DEFAULT_EXERCISES.slice();
-      if(!state.data.workouts)state.data.workouts=DEFAULT_WORKOUTS.slice();
-      recalculateProgramWeeks();
-      persist();
-      renderHome();
-      renderHistory();
-      renderExerciseLibrary();
-      renderTemplates();
-      toast('Backup imported')
-    }catch{
-      toast('That backup file is invalid')
-    }
-  };
-  r.readAsText(file)
-}
-
-function updateHomeDraftCard(){
-  const area=$('#draftResumeArea');
-  if(!area)return;
-  const draft=loadDraft();
-  if(draft&&draft.selected!==null){
-    const workout=workoutById(draft.selected);
-    area.classList.remove('hidden');
-    area.innerHTML=`<div class="draft-resume-card"><div><strong>Workout in progress</strong><small>${workout?workout.name:'Draft workout'}${draft.date?' · '+draft.date:''}</small></div><div class="resume-actions"><button id="continueDraftFromHomeBtn" type="button" class="secondary">Continue workout</button><button id="discardDraftBtn" type="button" class="discard-btn">Discard</button></div></div>`;
-    $('#continueDraftFromHomeBtn').onclick=()=>resumeDraftWorkout();
-    $('#discardDraftBtn').onclick=()=>discardDraftWorkout();
-  }else{
-    area.classList.add('hidden');
-    area.innerHTML='';
-  }
-}
-
-function startWorkoutFromHome(workoutId){
-  if(isDraftInProgress()){
-    toast('Workout in progress.');
-    return;
-  }
-  openWorkout(workoutId);
-}
-
-function resumeDraftWorkout(){
-  const draft=loadDraft();
-  if(!draft)return;
-  const workout=workoutById(draft.selected)||state.data.workouts[0];
-  if(!workout)return;
-  document.body.classList.add('workout-mode');
-  state.selected=workout.id;
-  const title=$('#workoutTitle');
-  if(title)title.textContent=workout.name;
-  renderWorkoutEditor(workout);
-  const dateInput=$('#workoutDate');
-  if(dateInput)dateInput.value=draft.date||new Date().toISOString().slice(0,10);
-  startWorkoutTimerFromDraft(draft);
-  showView('workout');
-}
-
-function discardDraftWorkout(){
-  clearDraft();
-  stopWorkoutTimer();
-  resetRestTimer();
-  workoutDurationStart=null;
-  state.selected=null;
-  renderHome();
-  toast('Draft workout discarded');
-}
-
-function restoreDraftIntoRenderedWorkout(){
-  const draft=loadDraft();
-  if(!draft||draft.selected!==state.selected)return;
-  [...document.querySelectorAll('.exercise-card')].forEach(card=>{
-    const draftItem=draft.exercises.find(x=>x.idx===Number(card.dataset.idx));
-    if(!draftItem)return;
-    const weight=card.querySelector('.weight-input');
-    if(weight)weight.value=draftItem.weight||'';
-    [...card.querySelectorAll('.set-cell input')].forEach((input,i)=>{input.value=draftItem.sets?.[i]||''});
-  });
-  const dateInput=$('#workoutDate');
-  if(draft.date&&dateInput)dateInput.value=draft.date;
-}
-
-function updateWorkoutTimerDisplay(){
-  if(!workoutStartTime)return;
-  const el=$('#workoutElapsed');
-  if(el)el.textContent=formatDuration(Date.now()-workoutStartTime);
-}
-function startWorkoutTimerFresh(){
-  workoutStartTime=Date.now();
-  workoutDurationStart=workoutStartTime;
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=setInterval(updateWorkoutTimerDisplay,1000);
-  updateWorkoutTimerDisplay();
-  saveDraft();
-}
-function startWorkoutTimerFromDraft(draft){
-  workoutStartTime=draft.workoutStartTime||Date.now();
-  workoutDurationStart=draft.workoutDurationStart||workoutStartTime;
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=setInterval(updateWorkoutTimerDisplay,1000);
-  updateWorkoutTimerDisplay();
-  saveDraft();
-}
-function stopWorkoutTimer(){
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=null;
-  workoutStartTime=null;
-  const el=$('#workoutElapsed');
-  if(el)el.textContent='00:00';
-}
-
-function updateRestControls(){const btn=$('#restStartBtn');if(!btn)return;btn.textContent=restRunning?'Stop':'Start';btn.classList.toggle('stop',restRunning);btn.classList.toggle('start',!restRunning)}
-function updateRestDisplay(){const elapsed=restElapsedBeforePause+(restRunning?Date.now()-restStartTime:0);const el=$('#restElapsed');if(el)el.textContent=formatDuration(elapsed);updateRestControls()}
-function startRestTimer(){if(restRunning){stopRestTimer();return}restRunning=true;restStartTime=Date.now();clearInterval(restTimerInterval);restTimerInterval=setInterval(updateRestDisplay,1000);updateRestDisplay()}
-function stopRestTimer(){if(!restRunning)return;restElapsedBeforePause+=Date.now()-restStartTime;restRunning=false;clearInterval(restTimerInterval);restTimerInterval=null;updateRestDisplay()}
-function resetRestTimer(){clearInterval(restTimerInterval);restTimerInterval=null;restRunning=false;restStartTime=null;restElapsedBeforePause=0;const el=$('#restElapsed');if(el)el.textContent='00:00';updateRestControls()}
-
-function saveWorkout(){
-  const date=$('#workoutDate').value;
-  if(!validDateString(date)){toast('Choose a valid workout date');return}
-  const workout=workoutById(state.selected);
-  const durationMs=workoutDurationStart?Date.now()-workoutDurationStart:null;
-  const exercises=workout?.exerciseIds.map((exerciseId,idx)=>{
-    const ex=exerciseById(exerciseId);
-    const card=$(`.exercise-card[data-idx="${idx}"]`);
-    return{
-      name:ex.name,
-      weight:Number(card.querySelector('.weight-input').value)||0,
-      reps:[...card.querySelectorAll('.set-cell input')].map(i=>Number(i.value)||0),
-      goal:`${ex.defaultSets} x ${ex.reps||0}`
-    };
-  })||[];
-  if(exercises.some(e=>e.reps.some(r=>r===0))){toast('Enter reps for every set');return}
-  state.data.history.push({id:Date.now(),date,type:workout.name,programWeek:1,durationMs,exercises});
-  recalculateProgramWeeks();
-  const savedWorkout=state.data.history[state.data.history.length-1];
-  persist();
-  clearDraft();
-  stopWorkoutTimer();
-  resetRestTimer();
-  workoutDurationStart=null;
-  document.body.classList.remove('workout-mode');
-  renderHome();
-  toast(`Workout saved · ${weekLabel(savedWorkout.programWeek)}`);
-  showView('history');
-}
-
-function renderHistory(){
-  const el=$('#historyList');
-  if(!el)return;
-  el.innerHTML=state.data.history.length?state.data.history.slice().reverse().map(w=>{
-    const timeText=typeof w.durationMs==='number'&&w.durationMs>0?formatDuration(w.durationMs):'--';
-    return`<details class="card history-item"><summary><div class="history-summary-row"><div class="history-left"><strong class="history-workout-name">${w.type}</strong><span class="history-time" style="display:inline-block;margin-left:18px;min-width:64px;">${timeText}</span></div><div class="history-right"><span class="history-date">${w.date}${[6,12].includes(Number(w.programWeek))?' (Deload)':''}</span><button class="trash-btn" data-delete-id="${w.id}" aria-label="Delete ${w.type} on ${w.date}" title="Delete workout">🗑</button></div></div></summary><div class="history-details">${w.exercises.map(e=>{const best=Math.max(...e.reps.map(r=>e1rm(e.weight,r)));return`<div class="history-exercise"><strong>${e.name}</strong><span>${e.weight||'Bodyweight'}${e.weight?' lb':''}</span><small>Reps: ${e.reps.join(' / ')}${best?' · e1RM '+best:''}</small></div>`}).join('')}</div></details>`;
-  }).join(''):'<div class="card"><h3>No workouts saved yet</h3><p>Complete a workout and it will appear here.</p></div>';
-  el.querySelectorAll('.trash-btn').forEach(button=>button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();deleteWorkout(Number(button.dataset.deleteId))}));
-  renderExerciseSelect();
-}
-
-function deleteWorkout(id){
-  const workout=state.data.history.find(item=>Number(item.id)===Number(id));
-  if(!workout)return;
-  if(!confirm(`Delete ${workout.type} from ${workout.date}?`))return;
-  state.data.history=state.data.history.filter(item=>Number(item.id)!==Number(id));
-  recalculateProgramWeeks();
-  persist();
-  renderHome();
-  renderHistory();
-  toast('Workout deleted');
-}
-
-function renderExerciseSelect(){
-  const s=$('#exerciseSelect');
-  if(!s)return;
-  const old=s.value;
-  s.innerHTML=exerciseNameList().map(n=>`<option>${n}</option>`).join('');
-  if(old)s.value=old;
-  renderExerciseHistory();
-}
-
-function renderExerciseHistory(){
-  const name=$('#exerciseSelect')?.value||exerciseNameList()[0]||'';
-  const entries=allEntries(name),best=bestE1RM(name),last=entries.at(-1);
-  const stats=$('#exerciseStats');
-  if(stats)stats.innerHTML=`<div class="stat"><span>Last load</span><strong>${last?last.weight+' lb':'--'}</strong></div><div class="stat"><span>Best e1RM</span><strong>${best||'--'}</strong></div><div class="stat"><span>Sessions</span><strong>${entries.length}</strong></div>`;
-  const list=$('#exerciseHistoryList');
-  if(list)list.innerHTML=entries.slice().reverse().map(e=>`<div class="card exercise-log"><strong>${e.date}</strong><span>${e.weight} lb · ${e.reps.join('/')}</span><span class="e1rm">e1RM ${Math.max(...e.reps.map(r=>e1rm(e.weight,r)))}</span></div>`).join('')||'<div class="card"><p>No entries yet.</p></div>';
-  if(entries.length)drawChart(entries);
-}
-
-function renderExerciseLibrary(){
-  const el=$('#exerciseLibraryList');
-  if(!el)return;
-  el.innerHTML=`<div class="exercise-library-grid">${state.data.exercises.map(ex=>`<div class="exercise-item" data-id="${ex.id}"><div class="exercise-item-head"><strong>${ex.name}</strong></div><div class="exercise-meta"><label>Name<input data-field="name" value="${ex.name}"></label><label>Sets<input data-field="defaultSets" type="number" value="${clampSets(ex.defaultSets)}" max="10"></label><label>Reps<input data-field="reps" type="number" value="${ex.reps}"></label></div><div class="exercise-actions"><button class="secondary" data-save-exercise="${ex.id}">Save</button><button class="danger" data-delete-exercise="${ex.id}">Delete</button></div></div>`).join('')}</div>`;
-  el.querySelectorAll('[data-save-exercise]').forEach(btn=>btn.onclick=()=>saveExercise(btn.dataset.saveExercise));
-  el.querySelectorAll('[data-delete-exercise]').forEach(btn=>btn.onclick=()=>deleteExercise(btn.dataset.deleteExercise));
-}
-
-function addExercise(){
-  const id=`exercise-${Date.now()}`;
-  state.data.exercises.push({id,name:'New Exercise',defaultSets:3,reps:10,step:5});
-  persist();
-  renderExerciseLibrary();
-  renderExerciseSelect();
-  renderHome();
-}
-
-function saveExercise(id){
-  const card=$(`.exercise-item[data-id="${id}"]`);
-  const ex=state.data.exercises.find(x=>x.id===id);
-  if(!card||!ex)return;
-  ex.name=card.querySelector('[data-field="name"]').value.trim()||'Unnamed Exercise';
-  ex.defaultSets=clampSets(card.querySelector('[data-field="defaultSets"]').value);
-  ex.reps=Number(card.querySelector('[data-field="reps"]').value)||0;
-  persist();
-  renderExerciseLibrary();
-  renderExerciseSelect();
-  renderHome();
-  toast('Exercise saved');
-}
-
-function deleteExercise(id){
-  state.data.exercises=state.data.exercises.filter(x=>x.id!==id);
-  state.data.workouts.forEach(w=>w.exerciseIds=w.exerciseIds.filter(exId=>exId!==id));
-  persist();
-  renderExerciseLibrary();
-  renderHome();
-  renderExerciseSelect();
-  toast('Exercise deleted');
-}
-
-function renderTemplates(){
-  const el=$('#templateList');
-  if(!el)return;
-  el.innerHTML=`<div class="template-list">${state.data.workouts.map(w=>{const options=exerciseNameList().map(n=>`<option>${n}</option>`).join('');return`<div class="template-card" data-template-id="${w.id}"><div class="template-head"><strong>${w.name}</strong><button class="secondary" data-save-template="${w.id}">Save</button></div><div class="template-meta"><label>Name<input data-field="template-name" value="${w.name}"></label><label>Day<select data-field="template-day"><option${w.day==='Monday'?' selected':''}>Monday</option><option${w.day==='Tuesday'?' selected':''}>Tuesday</option><option${w.day==='Wednesday'?' selected':''}>Wednesday</option><option${w.day==='Thursday'?' selected':''}>Thursday</option><option${w.day==='Friday'?' selected':''}>Friday</option><option${w.day==='Saturday'?' selected':''}>Saturday</option><option${w.day==='Sunday'?' selected':''}>Sunday</option></select></label></div><div class="template-exercises">${w.exerciseIds.map((id,idx)=>{const ex=exerciseById(id);return`<div class="template-exercise" data-exercise-index="${idx}"><strong>${ex?ex.name:'Missing exercise'}</strong><button class="move-btn" data-move-up="${idx}">↑</button><button class="move-btn" data-move-down="${idx}">↓</button><button class="remove-btn" data-remove-exercise="${idx}">Remove</button></div>`}).join('')}</div><div class="template-add-row"><select data-add-select>${options}</select><button class="primary" data-add-exercise-to-template="${w.id}">Add exercise</button></div></div>`}).join('')}</div>`;
-  el.querySelectorAll('[data-save-template]').forEach(btn=>btn.onclick=()=>saveTemplate(btn.dataset.saveTemplate));
-  el.querySelectorAll('[data-remove-exercise]').forEach(btn=>btn.onclick=()=>removeExerciseFromTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.removeExercise)));
-  el.querySelectorAll('[data-move-up]').forEach(btn=>btn.onclick=()=>moveExerciseInTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.moveUp),-1));
-  el.querySelectorAll('[data-move-down]').forEach(btn=>btn.onclick=()=>moveExerciseInTemplate(btn.closest('.template-card').dataset.templateId,Number(btn.dataset.moveDown),1));
-  el.querySelectorAll('[data-add-exercise-to-template]').forEach(btn=>btn.onclick=()=>addExerciseToTemplate(btn.dataset.addExerciseToTemplate));
-}
-
-function saveTemplate(id){
-  const card=$(`.template-card[data-template-id="${id}"]`);
-  const w=workoutById(id);
-  if(!card||!w)return;
-  w.name=card.querySelector('[data-field="template-name"]').value.trim()||w.name;
-  w.day=card.querySelector('[data-field="template-day"]').value;
-  persist();
-  renderHome();
-  renderTemplates();
-  toast('Template saved');
-}
-
-function addExerciseToTemplate(id){
-  const card=$(`.template-card[data-template-id="${id}"]`);
-  const w=workoutById(id);
-  if(!card||!w)return;
-  const selected=card.querySelector('[data-add-select]').value;
-  const ex=state.data.exercises.find(e=>e.name===selected);
-  if(!ex){toast('Pick an exercise');return}
-  w.exerciseIds.push(ex.id);
-  persist();
-  renderTemplates();
-  renderHome();
-  toast('Exercise added');
-}
-
-function removeExerciseFromTemplate(templateId,index){
-  const w=workoutById(templateId);
-  if(!w)return;
-  w.exerciseIds.splice(index,1);
-  persist();
-  renderTemplates();
-  renderHome();
-  toast('Exercise removed');
-}
-
-function moveExerciseInTemplate(templateId,index,direction){
-  const w=workoutById(templateId);
-  if(!w)return;
-  const next=index+direction;
-  if(next<0||next>=w.exerciseIds.length)return;
-  [w.exerciseIds[index],w.exerciseIds[next]]=[w.exerciseIds[next],w.exerciseIds[index]];
-  persist();
-  renderTemplates();
-  renderHome();
-}
-
-function bindWorkoutTemplateButtons(workout){}
-
-function drawChart(entries){
-  const canvas=$('#progressChart');
-  if(!canvas)return;
-  const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,w=canvas.clientWidth||700,h=300;
-  canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
-  const values=entries.map(entry=>Math.max(...entry.reps.map(reps=>e1rm(entry.weight,reps))));
-  const styles=getComputedStyle(document.body),muted=styles.getPropertyValue('--muted').trim()||'#657482',grid=styles.getPropertyValue('--line').trim()||'#d8e0e6';
-  const margin={left:54,right:12,top:18,bottom:78},plotWidth=w-66,plotHeight=h-96;
-  ctx.font='11px system-ui';ctx.fillStyle=muted;ctx.strokeStyle=grid;ctx.lineWidth=1;ctx.textBaseline='middle';
-  if(!values.length){ctx.textAlign='center';ctx.fillText('No data yet',w/2,h/2);return}
-  let minimum=Math.min(...values),maximum=Math.max(...values);
-  const padding=Math.max(5,Math.ceil((maximum-minimum||10)*.15));
-  minimum=Math.floor((minimum-padding)/5)*5;
-  maximum=Math.ceil((maximum+padding)/5)*5;
-  if(maximum===minimum)maximum=minimum+10;
-  const tickCount=5;
-  for(let i=0;i<tickCount;i++){
-    const value=Math.round(maximum-i*(maximum-minimum)/(tickCount-1)),y=margin.top+i*plotHeight/(tickCount-1);
-    ctx.beginPath();ctx.moveTo(margin.left,y);ctx.lineTo(w-margin.right,y);ctx.stroke();
-    ctx.textAlign='right';ctx.fillText(String(value),margin.left-7,y)
-  }
-  ctx.save();ctx.translate(14,margin.top+plotHeight/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('Estimated 1RM (lb)',0,0);ctx.restore();
-  const pointX=index=>margin.left+(values.length===1?plotWidth/2:index*plotWidth/(values.length-1));
-  const pointY=value=>margin.top+(maximum-value)*plotHeight/(maximum-minimum);
-  ctx.strokeStyle='#2b75a9';ctx.lineWidth=3;ctx.beginPath();values.forEach((value,index)=>index?ctx.lineTo(pointX(index),pointY(value)):ctx.moveTo(pointX(index),pointY(value)));ctx.stroke();
-  ctx.fillStyle='#17365d';values.forEach((value,index)=>{ctx.beginPath();ctx.arc(pointX(index),pointY(value),4,0,Math.PI*2);ctx.fill()});
-  const maximumLabels=Math.max(2,Math.floor(plotWidth/80)),stride=Math.max(1,Math.ceil(entries.length/maximumLabels));
-  ctx.fillStyle=muted;ctx.font='10px system-ui';ctx.textAlign='right';
-  entries.forEach((entry,index)=>{
-    if(index%stride&&index!==entries.length-1)return;
-    const parsed=new Date(entry.date+'T00:00:00'),date=isNaN(parsed)?entry.date:parsed.toLocaleDateString(undefined,{month:'short',day:'numeric'}),label=date+([6,12].includes(Number(entry.programWeek))?' (Deload)':'');
-    ctx.save();ctx.translate(pointX(index),margin.top+plotHeight+11);ctx.rotate(-Math.PI/4);ctx.fillText(label,0,0);ctx.restore()
-  });
-  ctx.textAlign='center';ctx.fillText('Workout date',margin.left+plotWidth/2,h-8)
-}
-
-function exportData(){
-  const blob=new Blob([JSON.stringify(state.data,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='strength-tracker-backup.json';
-  a.click();
-  URL.revokeObjectURL(a.href)
-}
-
-function importData(file){
-  const r=new FileReader();
-  r.onload=()=>{
-    try{
-      state.data=JSON.parse(r.result);
-      if(!state.data.exercises)state.data.exercises=DEFAULT_EXERCISES.slice();
-      if(!state.data.workouts)state.data.workouts=DEFAULT_WORKOUTS.slice();
-      recalculateProgramWeeks();
-      persist();
-      renderHome();
-      renderHistory();
-      renderExerciseLibrary();
-      renderTemplates();
-      toast('Backup imported')
-    }catch{
-      toast('That backup file is invalid')
-    }
-  };
-  r.readAsText(file)
-}
-
-function updateHomeDraftCard(){
-  const area=$('#draftResumeArea');
-  if(!area)return;
-  const draft=loadDraft();
-  if(draft&&draft.selected!==null){
-    const workout=workoutById(draft.selected);
-    area.classList.remove('hidden');
-    area.innerHTML=`<div class="draft-resume-card"><div><strong>Workout in progress</strong><small>${workout?workout.name:'Draft workout'}${draft.date?' · '+draft.date:''}</small></div><div class="resume-actions"><button id="continueDraftFromHomeBtn" type="button" class="secondary">Continue workout</button><button id="discardDraftBtn" type="button" class="discard-btn">Discard</button></div></div>`;
-    $('#continueDraftFromHomeBtn').onclick=()=>resumeDraftWorkout();
-    $('#discardDraftBtn').onclick=()=>discardDraftWorkout();
-  }else{
-    area.classList.add('hidden');
-    area.innerHTML='';
-  }
-}
-
-function startWorkoutFromHome(workoutId){
-  if(isDraftInProgress()){
-    toast('Workout in progress.');
-    return;
-  }
-  openWorkout(workoutId);
-}
-
-function resumeDraftWorkout(){
-  const draft=loadDraft();
-  if(!draft)return;
-  const workout=workoutById(draft.selected)||state.data.workouts[0];
-  if(!workout)return;
-  document.body.classList.add('workout-mode');
-  state.selected=workout.id;
-  const title=$('#workoutTitle');
-  if(title)title.textContent=workout.name;
-  renderWorkoutEditor(workout);
-  const dateInput=$('#workoutDate');
-  if(dateInput)dateInput.value=draft.date||new Date().toISOString().slice(0,10);
-  startWorkoutTimerFromDraft(draft);
-  showView('workout');
-}
-
-function discardDraftWorkout(){
-  clearDraft();
-  stopWorkoutTimer();
-  resetRestTimer();
-  workoutDurationStart=null;
-  state.selected=null;
-  renderHome();
-  toast('Draft workout discarded');
-}
-
-function restoreDraftIntoRenderedWorkout(){
-  const draft=loadDraft();
-  if(!draft||draft.selected!==state.selected)return;
-  [...document.querySelectorAll('.exercise-card')].forEach(card=>{
-    const draftItem=draft.exercises.find(x=>x.idx===Number(card.dataset.idx));
-    if(!draftItem)return;
-    const weight=card.querySelector('.weight-input');
-    if(weight)weight.value=draftItem.weight||'';
-    [...card.querySelectorAll('.set-cell input')].forEach((input,i)=>{input.value=draftItem.sets?.[i]||''});
-  });
-  const dateInput=$('#workoutDate');
-  if(draft.date&&dateInput)dateInput.value=draft.date;
-}
-
-function updateWorkoutTimerDisplay(){
-  if(!workoutStartTime)return;
-  const el=$('#workoutElapsed');
-  if(el)el.textContent=formatDuration(Date.now()-workoutStartTime);
-}
-function startWorkoutTimerFresh(){
-  workoutStartTime=Date.now();
-  workoutDurationStart=workoutStartTime;
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=setInterval(updateWorkoutTimerDisplay,1000);
-  updateWorkoutTimerDisplay();
-  saveDraft();
-}
-function startWorkoutTimerFromDraft(draft){
-  workoutStartTime=draft.workoutStartTime||Date.now();
-  workoutDurationStart=draft.workoutDurationStart||workoutStartTime;
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=setInterval(updateWorkoutTimerDisplay,1000);
-  updateWorkoutTimerDisplay();
-  saveDraft();
-}
-function stopWorkoutTimer(){
-  clearInterval(workoutTimerInterval);
-  workoutTimerInterval=null;
-  workoutStartTime=null;
-  const el=$('#workoutElapsed');
-  if(el)el.textContent='00:00';
-}
-
-function updateRestControls(){const btn=$('#restStartBtn');if(!btn)return;btn.textContent=restRunning?'Stop':'Start';btn.classList.toggle('stop',restRunning);btn.classList.toggle('start',!restRunning)}
-function updateRestDisplay(){const elapsed=restElapsedBeforePause+(restRunning?Date.now()-restStartTime:0);const el=$('#restElapsed');if(el)el.textContent=formatDuration(elapsed);updateRestControls()}
-function startRestTimer(){if(restRunning){stopRestTimer();return}restRunning=true;restStartTime=Date.now();clearInterval(restTimerInterval);restTimerInterval=setInterval(updateRestDisplay,1000);updateRestDisplay()}
-function stopRestTimer(){if(!restRunning)return;restElapsedBeforePause+=Date.now()-restStartTime;restRunning=false;clearInterval(restTimerInterval);restTimerInterval=null;updateRestDisplay()}
-function resetRestTimer(){clearInterval(restTimerInterval);restTimerInterval=null;restRunning=false;restStartTime=null;restElapsedBeforePause=0;const el=$('#restElapsed');if(el)el.textContent='00:00';updateRestControls()}
-
-function saveWorkout(){
-  const date=$('#workoutDate').value;
-  if(!validDateString(date)){toast('Choose a valid workout date');return}
-  const workout=workoutById(state.selected);
-  const durationMs=workoutDurationStart?Date.now()-workoutDurationStart:null;
-  const exercises=workout?.exerciseIds.map((exerciseId,idx)=>{
-    const ex=exerciseById(exerciseId);
-    const card=$(`.exercise-card[data-idx="${idx}"]`);
-    return{
-      name:ex.name,
-      weight:Number(card.querySelector('.weight-input').value)||0,
-      reps:[...card.querySelectorAll('.set-cell input')].map(i=>Number(i.value)||0),
-      goal:`${ex.defaultSets} x ${ex.reps||0}`
-    };
-  })||[];
-  if(exercises.some(e=>e.reps.some(r=>r===0))){toast('Enter reps for every set');return}
-  state.data.history.push({id:Date.now(),date,type:workout.name,programWeek:1,durationMs,exercises});
-  recalculateProgramWeeks();
-  const savedWorkout=state.data.history[state.data.history.length-1];
-  persist();
-  clearDraft();
-  stopWorkoutTimer();
-  resetRestTimer();
-  workoutDurationStart=null;
-  document.body.classList.remove('workout-mode');
-  renderHome();
-  toast(`Workout saved · ${weekLabel(savedWorkout.programWeek)}`);
-  showView('history');
-}
-
-function renderHomeIfPossible(){renderHome();updateHomeDraftCard()}
 
 function init(){
-  if(localStorage.getItem('strengthDark')==='true')document.body.classList.add('dark');
+  applyTheme(state.data.activeTheme);
 
   $$('.bottom-nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
   $$('[data-go="home"]').forEach(b=>b.onclick=()=>{stopWorkoutTimer();resetRestTimer();showView('home')});
@@ -1997,25 +621,15 @@ function init(){
   $('#addExerciseBtn')?.addEventListener('click',addExercise);
   $('#exportBtn')?.addEventListener('click',exportData);
   $('#importInput')?.addEventListener('change',e=>e.target.files[0]&&importData(e.target.files[0]));
-  $('#themeBtn')?.addEventListener('click',()=>{
-    document.body.classList.toggle('dark');
-    localStorage.setItem('strengthDark',document.body.classList.contains('dark'));
-  });
+  $('#cheatCodeForm')?.addEventListener('submit',event=>{event.preventDefault();redeemCheatCode()});
+  $('#resetPurchasesBtn')?.addEventListener('click',resetThemePurchases);
 
   recalculateProgramWeeks();
   persist();
   renderHome();
-  updateHomeDraftCard();
   renderExerciseLibrary();
   renderTemplates();
-
-  const draft=loadDraft();
-  if(draft&&draft.selected!==null){
-    const workout=workoutById(draft.selected);
-    if(workout){
-      updateHomeDraftCard();
-    }
-  }
+  renderStore();
 
   if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js');
 }
