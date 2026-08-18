@@ -134,6 +134,8 @@ const parsed=raw?JSON.parse(raw):null;
 const state={selected:null,data:parsed&&parsed.exercises&&parsed.workouts?parsed:{history:parsed?.history||[],exercises:DEFAULT_EXERCISES.slice(),workouts:DEFAULT_WORKOUTS.slice()}};
 if(!state.data.exercises)state.data.exercises=DEFAULT_EXERCISES.slice();
 if(!state.data.workouts)state.data.workouts=DEFAULT_WORKOUTS.slice();
+const abWheel=state.data.exercises.find(exercise=>exercise.id==='ab-wheel');
+if(abWheel)abWheel.step=5;
 normalizeRewardData();
 
 let workoutTimerInterval=null,workoutStartTime=null,restTimerInterval=null,restStartTime=null,restElapsedBeforePause=0,restRunning=false;
