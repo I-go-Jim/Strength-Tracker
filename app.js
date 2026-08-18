@@ -92,7 +92,8 @@ const ACHIEVEMENT_LEVELS={
   easy:{label:'Easy',coins:5},
   medium:{label:'Medium',coins:20},
   hard:{label:'Hard',coins:50},
-  veryHard:{label:'Very Hard',coins:100}
+  veryHard:{label:'Very Hard',coins:100},
+  legendary:{label:'Legendary',coins:1}
 };
 const ACHIEVEMENTS=[
   {id:'workouts-1',name:'First Step',description:'Complete 1 workout',level:'easy',type:'workouts',target:1},
@@ -124,7 +125,8 @@ const ACHIEVEMENTS=[
   {id:'deadlift-495',name:'CEO of Deadlift Club',description:'Deadlift 495 lb',level:'veryHard',type:'lift',lift:'deadlift',target:495},
   {id:'ohp-225',name:'CEO of Press Club',description:'Standing OHP 225 lb',level:'veryHard',type:'lift',lift:'standing-ohp',target:225},
   {id:'total-1000',name:'1,000 lb Club',description:'Reach a 1,000 lb combined total',level:'veryHard',type:'total',target:1000},
-  {id:'total-1100',name:'1,100 lb Club',description:'Reach a 1,100 lb combined total',level:'veryHard',type:'total',target:1100}
+  {id:'total-1100',name:'1,100 lb Club',description:'Reach a 1,100 lb combined total',level:'veryHard',type:'total',target:1100},
+  {id:'ultimate-poozer',name:'Ultimate Poozer',description:'Own the Poozer theme, Golden Poozer trophy, and Poozer CEO title',level:'legendary',type:'poozerPurchases',target:3}
 ];
 
 let raw=localStorage.getItem(STORE)||localStorage.getItem('seanStrengthTrackerV11')||localStorage.getItem('seanStrengthTrackerV10')||localStorage.getItem('seanStrengthTrackerV9')||localStorage.getItem('seanStrengthTrackerV8')||localStorage.getItem('seanStrengthTrackerV6_1')||localStorage.getItem('seanStrengthTrackerV6')||localStorage.getItem('seanStrengthTrackerV5')||localStorage.getItem('seanStrengthTrackerV4')||localStorage.getItem('seanStrengthTrackerV2')||localStorage.getItem('seanStrengthTrackerV1');
@@ -216,6 +218,15 @@ function showCompletionCelebration(){
   overlay.innerHTML=`<strong>Workout Complete!</strong>${symbols.map((symbol,index)=>`<span style="--i:${index}">${symbol}</span>`).join('')}`;
   document.body.appendChild(overlay);
   setTimeout(()=>overlay.remove(),2600);
+}
+function showUltimatePoozerCelebration(){
+  document.querySelector('.completion-celebration')?.remove();
+  const overlay=document.createElement('div');
+  const symbols=['🎆','✨','💩','✨','🎇'];
+  overlay.className='completion-celebration celebration-fireworks ultimate-poozer-celebration';
+  overlay.innerHTML=`<strong>Ultimate Poozer!</strong>${symbols.map((symbol,index)=>`<span style="--i:${index}">${symbol}</span>`).join('')}`;
+  document.body.appendChild(overlay);
+  setTimeout(()=>overlay.remove(),3200);
 }
 
 function saveDraft(){
@@ -331,6 +342,11 @@ function achievementStats(){
     volume,
     rotation:completedTemplates.size,
     streak,
+    poozerPurchases:[
+      state.data.ownedThemes.includes('poozer'),
+      state.data.ownedStoreItems.includes('trophy-poozer'),
+      state.data.ownedStoreItems.includes('title-poozer-ceo')
+    ].filter(Boolean).length,
     total:liftWeights['bench-press']+liftWeights['back-squat']+liftWeights.deadlift
   };
 }
@@ -342,6 +358,7 @@ function achievementValue(achievement,stats){
   if(achievement.type==='volume')return stats.volume;
   if(achievement.type==='rotation')return stats.rotation;
   if(achievement.type==='streak')return stats.streak;
+  if(achievement.type==='poozerPurchases')return stats.poozerPurchases;
   return stats.total;
 }
 function achievementProgressText(achievement,value){
@@ -351,6 +368,7 @@ function achievementProgressText(achievement,value){
   if(achievement.type==='volume')return `${formatVolume(Math.min(value,achievement.target))} / ${formatVolume(achievement.target)}`;
   if(achievement.type==='rotation')return `${Math.min(value,achievement.target)} / ${achievement.target} templates`;
   if(achievement.type==='streak')return `${Math.min(value,achievement.target)} / ${achievement.target} weeks`;
+  if(achievement.type==='poozerPurchases')return `${Math.min(value,achievement.target)} / ${achievement.target} Poozer items`;
   return `${Math.min(value,achievement.target)} / ${achievement.target} lb`;
 }
 function revokeInvalidAchievements(){
@@ -723,6 +741,7 @@ function claimAchievementRewards(ids){
   renderCoinBalance();
   renderAchievements();
   toast(`${claimed.length===1?claimed[0].name:`${claimed.length} achievements`} claimed · +${coins} coins`);
+  if(claimed.some(achievement=>achievement.id==='ultimate-poozer'))showUltimatePoozerCelebration();
 }
 
 function renderAchievements(){
@@ -739,10 +758,12 @@ function renderAchievements(){
       const value=achievementValue(achievement,stats);
       const complete=value>=achievement.target;
       const percent=complete?100:Math.min(100,Math.round(value/achievement.target*100));
-      const reward=complete&&!claimed?`<button class="primary achievement-claim" data-claim-achievement="${achievement.id}" type="button">Claim +${details.coins}</button>`:`<strong class="achievement-reward">+${details.coins}</strong>`;
+      const rewardLabel=achievement.id==='ultimate-poozer'&&!claimed?'????':details.coins;
+      const reward=complete&&!claimed?`<button class="primary achievement-claim" data-claim-achievement="${achievement.id}" type="button">Claim +${rewardLabel}</button>`:`<strong class="achievement-reward">+${rewardLabel}</strong>`;
       return`<article class="achievement-card ${claimed?'unlocked':complete?'claimable':'locked'}"><div class="achievement-icon" aria-hidden="true">${claimed?'✓':complete?'!':'◇'}</div><div class="achievement-info"><div class="achievement-title"><h3>${achievement.name}</h3><span class="difficulty ${level}">${details.label}</span></div><p>${achievement.description}</p><div class="achievement-progress"><span style="width:${percent}%"></span></div><small>${claimed?'Claimed':complete?'Completed · reward ready':achievementProgressText(achievement,value)}</small></div>${reward}</article>`;
     }).join('');
-    return`<section class="achievement-tier"><h2>${details.label}<span>${details.coins} coins each</span></h2>${cards}</section>`;
+    const tierReward=level==='legendary'?'???? coins':`${details.coins} coins each`;
+    return`<section class="achievement-tier"><h2>${details.label}<span>${tierReward}</span></h2>${cards}</section>`;
   }).join('');
   $('#claimAllAchievements')?.addEventListener('click',()=>claimAchievementRewards(available.map(achievement=>achievement.id)));
   el.querySelectorAll('[data-claim-achievement]').forEach(button=>button.addEventListener('click',()=>claimAchievementRewards([button.dataset.claimAchievement])));
@@ -835,9 +856,11 @@ function resetThemePurchases(){
   state.data.activeStoreItems={...DEFAULT_STORE_ITEMS};
   applyTheme('light');
   applyStoreCosmetics();
+  const achievementRevocation=revokeInvalidAchievements();
   persist();
   renderStore();
-  toast(`Purchases reset · +${refund} coins`);
+  renderAchievements();
+  toast(`Purchases reset · +${refund-achievementRevocation.coins} coins`);
 }
 
 function drawChart(entries){

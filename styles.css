@@ -97,7 +97,7 @@ body.theme-jurassic{--navy:#243f20;--mid:#98751b;--bg:#ebe5c8;--card:#fffbed;--t
 .theme-jurassic .app-header,.theme-jurassic .week-card{background:linear-gradient(135deg,#243f20,#5e742b 55%,#a62f21)}
 .theme-jurassic .card,.theme-jurassic .exercise-card,.theme-jurassic .store-item{border-color:#98751b}
 .theme-jurassic .bottom-nav button.active{background:#ddd29d;color:#a62f21}
-body.theme-poozer{--navy:#44207c;--mid:#d39b27;--bg:#f5efff;--card:#fffdf5;--text:#2e2140;--muted:#746784;--line:#ddccef;--good:#4d8a5a;--shadow:0 8px 26px rgba(68,32,124,.18)}
+body.theme-poozer{--navy:#44207c;--mid:#d39b27;--bg:#f5efff;--card:rgba(255,253,245,.94);--text:#2e2140;--muted:#746784;--line:#ddccef;--good:#4d8a5a;--shadow:0 8px 26px rgba(68,32,124,.18);background-color:var(--bg);background-image:url("poozer-people.png"),linear-gradient(135deg,#f5efff,#eadcff);background-size:550px 260px,cover;background-repeat:repeat,no-repeat;background-position:center top,center;background-attachment:scroll,fixed}
 .theme-poozer .app-header,.theme-poozer .week-card{background:linear-gradient(135deg,#44207c,#7e3db5 52%,#d39b27)}
 .theme-poozer .card,.theme-poozer .exercise-card,.theme-poozer .store-item{border-color:#d39b27}
 .theme-poozer .bottom-nav button.active{background:#f2dfad;color:#44207c}
@@ -240,6 +240,8 @@ body.theme-kawaii{--bg:#fde6ef;background-color:#fde6ef;background-image:url("da
 .achievement-card.unlocked{border-color:var(--good)}
 .achievement-card.claimable{border-color:var(--warn)}
 .achievement-card.locked{opacity:.78}
+.theme-poozer .achievement-card,.theme-kawaii .achievement-card,.theme-poozer .achievement-summary,.theme-kawaii .achievement-summary{background:#fffdf8}
+.theme-poozer .achievement-card.locked,.theme-kawaii .achievement-card.locked{opacity:.94}
 .achievement-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--bg);color:var(--muted);font-weight:900}
 .achievement-card.unlocked .achievement-icon{background:#e5f5ec;color:var(--good)}
 .achievement-card.claimable .achievement-icon{background:#fff1cf;color:var(--warn)}
@@ -252,6 +254,10 @@ body.theme-kawaii{--bg:#fde6ef;background-color:#fde6ef;background-image:url("da
 .difficulty.medium{background:#fff1cf;color:#805b00}
 .difficulty.hard{background:#ffe2d8;color:#923b1e}
 .difficulty.veryHard{background:#eadcff;color:#5d2b91}
+.difficulty.legendary{background:linear-gradient(135deg,#ffe68a,#d39b27);color:#563700}
+.achievement-tier:last-child{margin-top:24px;padding:15px;border:2px solid #d39b27;border-radius:18px;background:linear-gradient(135deg,rgba(255,230,138,.2),rgba(211,155,39,.12))}
+.achievement-tier:last-child>h2{color:#8a5b00}
+.achievement-tier:last-child .achievement-card{border-color:#d39b27;box-shadow:0 8px 28px rgba(211,155,39,.2)}
 .achievement-progress{height:5px;background:var(--line);border-radius:999px;overflow:hidden}
 .achievement-progress span{display:block;height:100%;background:var(--mid);border-radius:inherit}
 .achievement-card.unlocked .achievement-progress span{background:var(--good)}
@@ -285,7 +291,7 @@ body.theme-kawaii{--bg:#fde6ef;background-color:#fde6ef;background-image:url("da
 .theme-preview-neon{background:#0b0713}.theme-preview-neon span:nth-child(1){background:#6317a8}.theme-preview-neon span:nth-child(2){background:#ff2c9c}.theme-preview-neon span:nth-child(3){background:#52f4ff}
 .theme-preview-poop{background:#f3ead8}.theme-preview-poop span:nth-child(1){background:#5c3a1e}.theme-preview-poop span:nth-child(2){background:#956b38}.theme-preview-poop span:nth-child(3){background:#c69a55}
 .theme-preview-jurassic{background:#ebe5c8}.theme-preview-jurassic span:nth-child(1){background:#243f20}.theme-preview-jurassic span:nth-child(2){background:#98751b}.theme-preview-jurassic span:nth-child(3){background:#a62f21}
-.theme-preview-poozer{background:#f5efff}.theme-preview-poozer span:nth-child(1){background:#44207c}.theme-preview-poozer span:nth-child(2){background:#7e3db5}.theme-preview-poozer span:nth-child(3){background:#d39b27}
+.theme-preview-poozer{background-color:#f5efff;background-image:url("poozer-people.png");background-size:155px auto;background-position:center;background-repeat:no-repeat}.theme-preview-poozer span{opacity:.38}.theme-preview-poozer span:nth-child(1){background:#44207c}.theme-preview-poozer span:nth-child(2){background:#7e3db5}.theme-preview-poozer span:nth-child(3){background:#d39b27}
 .theme-preview-kawaii{background-color:#fff6e9;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='60'%3E%3Cg stroke='%236b5260' stroke-width='2' stroke-linejoin='round'%3E%3Cpath fill='%23ffd99e' d='M8 20 12 7l10 8c5-2 10-2 15 0l10-8 4 13v15c0 11-9 18-21 18S8 46 8 35Z'/%3E%3Ccircle cx='23' cy='29' r='2' fill='%236b5260'/%3E%3Ccircle cx='37' cy='29' r='2' fill='%236b5260'/%3E%3Cpath fill='%23ef9fbb' d='m30 33-3 3h6Z'/%3E%3C/g%3E%3C/svg%3E");background-position:center;background-repeat:repeat}
 .theme-preview-kawaii span{opacity:.45}.theme-preview-kawaii span:nth-child(1){background:#a94d77}.theme-preview-kawaii span:nth-child(2){background:#ef9fbb}.theme-preview-kawaii span:nth-child(3){background:#98d9c2}
 .theme-preview-kawaii{background-color:#f7adc6;background-size:78px 62px}
