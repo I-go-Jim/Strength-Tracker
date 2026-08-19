@@ -69,6 +69,8 @@ main{max-width:760px;margin:auto;padding:16px}
 .bottom-nav button span{display:block;font-size:1.05rem;margin-bottom:2px}
 .bottom-nav .nav-dumbbell{height:1.05rem}
 .nav-dumbbell svg{display:block;width:28px;height:16px;margin:0 auto;fill:currentColor}
+.bottom-nav .nav-achievement-icon{position:relative;width:max-content;margin:0 auto 2px}
+.achievement-nav-badge{position:absolute;top:-7px;right:-11px;display:grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border:2px solid var(--card);border-radius:999px;background:#e53935;color:#fff;font-size:.58rem;line-height:1;font-weight:950;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 .bottom-nav button.active{background:#e9f0f6;color:var(--navy)}
 .history-item summary{list-style:none;cursor:pointer}
 .history-item summary::-webkit-details-marker{display:none}

@@ -528,6 +528,20 @@ function achievementValue(achievement,stats){
   if(achievement.type==='allOtherAchievements')return stats.fullyClaimedAchievements;
   return stats.total;
 }
+function claimableAchievementCount(){
+  const stats=achievementStats();
+  return ACHIEVEMENTS.filter(achievement=>{
+    const paid=Number(state.data.achievementRewardsPaid[achievement.id])||0;
+    return paid<ACHIEVEMENT_LEVELS[achievement.level].coins&&achievementValue(achievement,stats)>=achievement.target;
+  }).length;
+}
+function renderAchievementNavBadge(){
+  const badge=$('#achievementNavBadge');
+  if(!badge)return;
+  const count=claimableAchievementCount();
+  badge.textContent=count;
+  badge.classList.toggle('hidden',count===0);
+}
 function achievementProgressText(achievement,value){
   if(achievement.type==='workouts')return `${Math.min(value,achievement.target)} / ${achievement.target} workouts`;
   if(achievement.type==='maxTestDays')return `${Math.min(value,achievement.target)} / ${achievement.target} test day`;
@@ -557,6 +571,7 @@ function revokeInvalidAchievements(){
 }
 
 function renderHome(){
+  renderAchievementNavBadge();
   const week=currentProgramWeek();
   const cycle=currentCycleDetails();
   const activeProgram=cycle.program;
@@ -1004,6 +1019,7 @@ function claimAchievementRewards(ids){
 }
 
 function renderAchievements(){
+  renderAchievementNavBadge();
   const el=$('#achievementList');
   if(!el)return;
   const stats=achievementStats();
@@ -1035,6 +1051,7 @@ function renderAchievements(){
 }
 
 function renderStore(){
+  renderAchievementNavBadge();
   renderCoinBalance();
   const el=$('#storeItems');
   if(!el)return;
